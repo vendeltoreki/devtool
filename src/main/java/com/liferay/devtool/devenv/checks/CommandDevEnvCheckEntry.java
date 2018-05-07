@@ -35,7 +35,7 @@ public class CommandDevEnvCheckEntry extends BaseDevEnvCheckEntry {
 		List<String> lines = new ArrayList<>();
 		lines.addAll(comm.getStdOut());
 		lines.addAll(comm.getStdErr());
-		description = "Output:" + lines.stream().collect(Collectors.joining("\n"));
+		description = "Output: " + lines.stream().collect(Collectors.joining("\n"));
 	}
 
 }

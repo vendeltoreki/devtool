@@ -64,9 +64,19 @@ public class DevEnvChecker {
 	}
 
 	public void runChecks() {
+		reset();
+		
 		for (BaseDevEnvCheckEntry entry : checks) {
 			entry.runCheck();
-			System.out.println(entry.getMessage());
+			if (listener != null) {
+				listener.onUpdate(entry);
+			}
+		}
+	}
+
+	private void reset() {
+		for (BaseDevEnvCheckEntry entry : checks) {
+			entry.reset();
 			if (listener != null) {
 				listener.onUpdate(entry);
 			}

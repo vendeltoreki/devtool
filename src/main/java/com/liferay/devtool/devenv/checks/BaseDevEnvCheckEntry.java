@@ -77,4 +77,10 @@ public abstract class BaseDevEnvCheckEntry {
 	public String getClassName() {
 		return this.getClass().getSimpleName();
 	}
+
+	public void reset() {
+		status = CheckStatus.UNKNOWN;
+		message = null;
+		description = null;
+	}
 }

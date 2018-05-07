@@ -18,7 +18,6 @@ public class SimpleCommand {
 	}
 
 	public void run(String command) {
-		System.out.println("\n-- command: \"" + command + "\"");
 		try {
 			Process p = sysEnv.getRuntimeProcess(command);
 			exitValue = p.waitFor();

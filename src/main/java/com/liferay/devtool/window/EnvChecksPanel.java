@@ -55,7 +55,24 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 			envLister.add(p);
 		}
 
-		SwingWorker<List<BaseDevEnvCheckEntry>, Void> worker = new SwingWorker<List<BaseDevEnvCheckEntry>, Void>() {
+		refreshButton.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("Action called: " + e);
+				SwingWorker<List<BaseDevEnvCheckEntry>, Void> worker = createWorker();
+				worker.execute();
+			}
+		});
+
+		JScrollPane listScrollPane = new JScrollPane(envLister);
+		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
+
+		this.add(listScrollPane, BorderLayout.CENTER);
+	}
+
+	private SwingWorker<List<BaseDevEnvCheckEntry>, Void> createWorker() {
+		return new SwingWorker<List<BaseDevEnvCheckEntry>, Void>() {
 			@Override
 			public List<BaseDevEnvCheckEntry> doInBackground() {
 				System.out.println("T:" + Thread.currentThread().getName() + " -- do in background");
@@ -86,26 +103,6 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 				}
 			}
 		};
-
-		refreshButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println("Action called: " + e);
-				worker.execute();
-				/*
-				 * devEnvChecker.runChecks();
-				 * 
-				 * for (CheckPanel p : checkPanelList) { p.refreshEntry(); }
-				 * lister.revalidate();
-				 */
-			}
-		});
-
-		JScrollPane listScrollPane = new JScrollPane(envLister);
-		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
-
-		this.add(listScrollPane, BorderLayout.CENTER);
 	}
 
 	private CheckPanel createCheckPanel(BaseDevEnvCheckEntry entry) {
@@ -222,6 +219,12 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 					this.add(textArea, BorderLayout.SOUTH);
 				} else {
 					textArea.setText(entry.getDescription());
+					textArea.setVisible(true);
+				}
+			} else {
+				if (textArea != null) {
+					textArea.setText("");
+					textArea.setVisible(false);
 				}
 			}
 		}
