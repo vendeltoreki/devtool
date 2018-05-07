@@ -8,6 +8,7 @@ public class GitRepoEntry {
 	private String originUrl;
 	private String upstreamUrl;
 	private String currentBranch;
+	private String buildTargetDir;
 
 	public File getRootDir() {
 		return rootDir;
@@ -49,10 +50,18 @@ public class GitRepoEntry {
 		this.currentBranch = currentBranch;
 	}
 
+	public String getBuildTargetDir() {
+		return buildTargetDir;
+	}
+
+	public void setBuildTargetDir(String buildTargetDir) {
+		this.buildTargetDir = buildTargetDir;
+	}
+
 	@Override
 	public String toString() {
 		return "GitRepoEntry [rootDir=" + rootDir + ", name=" + name + ", originUrl=" + originUrl + ", upstreamUrl="
-				+ upstreamUrl + ", currentBranch=" + currentBranch + "]";
+				+ upstreamUrl + ", currentBranch=" + currentBranch+ ", buildTargetDir=" + buildTargetDir + "]";
 	}
 
 }

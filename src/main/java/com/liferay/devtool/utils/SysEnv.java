@@ -21,4 +21,8 @@ public class SysEnv {
 		return Runtime.getRuntime().exec(command);
 	}
 
+	public void exitWithCode(int status) {
+		System.exit(status);
+	}
+
 }

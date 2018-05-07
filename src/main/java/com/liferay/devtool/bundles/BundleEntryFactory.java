@@ -63,14 +63,16 @@ public class BundleEntryFactory {
 		InputStream input = null;
 
 		try {
-			input = new FileInputStream(propertiesFilePath);
-			prop.load(input);
-
-			bundleEntry.setDbDriverClass(prop.getProperty("jdbc.default.driverClassName"));
-			bundleEntry.setDbUrl(prop.getProperty("jdbc.default.url"));
-			bundleEntry.setDbUsername(prop.getProperty("jdbc.default.username"));
-			bundleEntry.setDbPassword(prop.getProperty("jdbc.default.password"));
-
+			File propertiesFile = new File(propertiesFilePath);
+			if (propertiesFile.exists() && propertiesFile.isFile()) { 
+				input = new FileInputStream(propertiesFilePath);
+				prop.load(input);
+				
+				bundleEntry.setDbDriverClass(prop.getProperty("jdbc.default.driverClassName"));
+				bundleEntry.setDbUrl(prop.getProperty("jdbc.default.url"));
+				bundleEntry.setDbUsername(prop.getProperty("jdbc.default.username"));
+				bundleEntry.setDbPassword(prop.getProperty("jdbc.default.password"));
+			}
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		} finally {

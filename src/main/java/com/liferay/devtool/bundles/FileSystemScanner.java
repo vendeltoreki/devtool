@@ -11,11 +11,9 @@ public class FileSystemScanner {
 	private Set<String> skipDirNames;
 	private Set<String> restrictedRootDirNames;
 	private int statDirCount = 0;
-	private List<String> foundEntries = new ArrayList<>();
 	private List<GitRepoEntry> foundGitRepos = new ArrayList<>();
 	private List<BundleEntry> foundBundles = new ArrayList<>();
 	private Set<String> foundBundleDirs = new HashSet<>();
-	private BundleEventListener bundleEventListener;
 
 	public static void main(String[] args) {
 		System.out.println("started");
@@ -30,10 +28,6 @@ public class FileSystemScanner {
 		File rootDir = new File(dirPath);
 		System.out.println(rootDir);
 		scanDir(rootDir, 1);
-
-		for (String entry : foundEntries) {
-			System.out.println("\t" + entry);
-		}
 
 		System.out.println("GIT Repos:");
 		for (GitRepoEntry entry : foundGitRepos) {
@@ -81,18 +75,14 @@ public class FileSystemScanner {
 		for (File file : list) {
 			if (file.isDirectory()) {
 				if (file.getName().equals(".git")) {
-					foundEntries.add("GIT: " + dir.getAbsolutePath());
 					foundGitRepos.add(createGitRepoEntry(dir));
 				} else if (file.getName().startsWith("tomcat-")) {
 					if (!foundBundleDirs.contains(dir.getAbsolutePath())) {
 						foundBundleDirs.add(dir.getAbsolutePath());
-						foundEntries.add("BUNDLE: " + dir.getAbsolutePath());
 						foundBundles.add(createBundleEntry(dir));
-						System.out.println("tomcat dir: \"" + file.getAbsolutePath() + "\"");
 					}
 				} else {
 					if (!isRestrictedDir(depth, file.getName())) {
-						// System.out.println(depth+": "+file);
 						scanDir(file, depth + 1);
 					}
 				}
@@ -110,9 +100,6 @@ public class FileSystemScanner {
 	private BundleEntry createBundleEntry(File bundleRootDir) {
 		BundleEntryFactory bundleEntryFactory = new BundleEntryFactory();
 		BundleEntry bundle = bundleEntryFactory.create(bundleRootDir);
-		if (bundleEventListener != null) {
-			bundleEventListener.onUpdate(bundle);
-		}
 		return bundle;
 	}
 
@@ -136,11 +123,11 @@ public class FileSystemScanner {
 		return false;
 	}
 
-	public void setBundleEventListener(BundleEventListener bundleEventListener) {
-		this.bundleEventListener = bundleEventListener;
-	}
-
 	public List<BundleEntry> getFoundBundles() {
 		return foundBundles;
+	}
+
+	public List<GitRepoEntry> getFoundGitRepos() {
+		return foundGitRepos;
 	}
 }

@@ -28,7 +28,6 @@ public class JarManifestCheck extends BaseDevEnvCheckEntry {
 	@Override
 	public void runCheck() {
 		String actualDirPath = context.replaceEnvVarsInPath(searchDirPath);
-		System.out.println(searchDirPath + "\n" + actualDirPath);
 
 		File dir = sysEnv.createFile(actualDirPath);
 
@@ -74,7 +73,6 @@ public class JarManifestCheck extends BaseDevEnvCheckEntry {
 							if (split.length >= 2) {
 								if (split[1].trim().equals(expectedValue)) {
 									success("Key \"" + manifestKey + "\" matches \"" + expectedValue + "\"");
-									System.out.println("read JAR: " + file.getAbsolutePath());
 								} else {
 									fail("Manifest value not matched: \"" + split[1].trim() + "\", expected=\""
 											+ expectedValue + "\"");

@@ -1,6 +1,7 @@
 package com.liferay.devtool.bundles;
 
 import java.io.File;
+import java.util.List;
 
 public class BundleEntry {
 	private File rootDir;
@@ -13,6 +14,7 @@ public class BundleEntry {
 	private String dbUrl;
 	private String dbUsername;
 	private String dbPassword;
+	private List<GitRepoEntry> gitRepos;
 
 	public String getDbDriverClass() {
 		return dbDriverClass;
@@ -92,6 +94,14 @@ public class BundleEntry {
 
 	public void setMemoryPermSize(int memoryPermSize) {
 		this.memoryPermSize = memoryPermSize;
+	}
+
+	public List<GitRepoEntry> getGitRepos() {
+		return gitRepos;
+	}
+
+	public void setGitRepos(List<GitRepoEntry> gitRepos) {
+		this.gitRepos = gitRepos;
 	}
 
 	@Override

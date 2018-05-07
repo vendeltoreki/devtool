@@ -4,25 +4,44 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
+import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
+
+import com.liferay.devtool.utils.StringUtils;
 
 public class GitRepoEntryFactory {
 	private String originUrl;
 	private String upstreamUrl;
 	private String currentBranch;
+	private String buildTargetDir;
+	private File gitRootDirFile;
 
 	public GitRepoEntry create(File gitRootDir) {
+		gitRootDirFile = gitRootDir;
+		
 		if (gitRootDir == null || !gitRootDir.isDirectory()) {
 			return null;
 		}
 
 		String configPath = gitRootDir.getAbsolutePath() + File.separator + ".git" + File.separator + "config";
 		String headPath = gitRootDir.getAbsolutePath() + File.separator + ".git" + File.separator + "HEAD";
-
+		
+		String localUserName = System.getProperty("user.name");
+		
 		readConfigFile(configPath);
 		readHeadFile(headPath);
+		
+		String appServerPropertiesPath = gitRootDir.getAbsolutePath() + File.separator + "app.server."+localUserName+".properties";
+		readPropertiesFile(appServerPropertiesPath);
+		
+		if (buildTargetDir == null) {
+			appServerPropertiesPath = gitRootDir.getAbsolutePath() + File.separator + "app.server.properties";
+			readPropertiesFile(appServerPropertiesPath);			
+		}
 
 		GitRepoEntry repo = new GitRepoEntry();
 		repo.setRootDir(gitRootDir);
@@ -30,6 +49,7 @@ public class GitRepoEntryFactory {
 		repo.setOriginUrl(originUrl);
 		repo.setUpstreamUrl(upstreamUrl);
 		repo.setCurrentBranch(currentBranch);
+		repo.setBuildTargetDir(buildTargetDir);
 		return repo;
 	}
 
@@ -101,4 +121,35 @@ public class GitRepoEntryFactory {
 		}
 	}
 
+	private void readPropertiesFile(String propertiesFilePath) {
+		Properties prop = new Properties();
+		InputStream input = null;
+
+		try {
+			File propertiesFile = new File(propertiesFilePath);
+			if (propertiesFile.exists() && propertiesFile.isFile()) { 
+				input = new FileInputStream(propertiesFilePath);
+				prop.load(input);
+				
+				// app.server.parent.dir=${project.dir}/../bundles_ee
+				
+				String appServDir = prop.getProperty("app.server.parent.dir");
+				String parentDir = gitRootDirFile.getAbsolutePath();
+				appServDir = StringUtils.replacePathParam(appServDir, "${project.dir}", parentDir);
+				
+				String absolutePath = FileSystems.getDefault().getPath(appServDir).normalize().toAbsolutePath().toString();
+				buildTargetDir = absolutePath;
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}	
 }

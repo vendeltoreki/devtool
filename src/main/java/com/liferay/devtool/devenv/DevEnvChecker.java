@@ -29,13 +29,6 @@ public class DevEnvChecker {
 		super();
 	}
 
-	public static void testRun() {
-		DevEnvChecker checker = new DevEnvChecker();
-		checker.addChecks();
-		checker.runChecks();
-		checker.printChecks();
-	}
-
 	public void addChecks() {
 		addCheck(new OsTypeCheckEntry());
 		addCheck(new EnvVarCheckEntry("JAVA_HOME", null, true));
@@ -44,13 +37,13 @@ public class DevEnvChecker {
 		addCheck(new EnvVarCheckEntry("ANT_OPTS", "-Xms4096m -Xmx4096m", false));
 		addCheck(new EnvVarCheckEntry("JPDA_ADDRESS", "8000", false));
 		addCheck(new EnvVarCheckEntry("JPDA_TRANSPORT", "dt_socket", false));
-		addCheck(new EnvVarCheckEntry("ASDFGH", "qwerty", false));
+		//addCheck(new EnvVarCheckEntry("ASDFGH", "qwerty", false));
 		addCheck(new CommandDevEnvCheckEntry("java -version"));
 		addCheck(new CommandDevEnvCheckEntry("javac -version"));
 		addCheck(new CommandDevEnvCheckEntry("ant -version"));
 		addCheck(new CommandDevEnvCheckEntry("git --version"));
 		addCheck(new CommandDevEnvCheckEntry("blade version"));
-		addCheck(new CommandDevEnvCheckEntry("asdfgh version"));
+		//addCheck(new CommandDevEnvCheckEntry("asdfgh version"));
 		addCheck(new JarManifestCheck("%ANT_HOME%/lib/", "Bundle-Version", "3.12.1.v20160829-0950"));
 		addCheck(new ExecutableLocationCheckEntry("java", "%JAVA_HOME%/bin/"));
 		addCheck(new ExecutableLocationCheckEntry("javac", "%JAVA_HOME%/bin/"));
@@ -76,17 +69,12 @@ public class DevEnvChecker {
 
 	private void reset() {
 		for (BaseDevEnvCheckEntry entry : checks) {
-			entry.reset();
-			if (listener != null) {
-				listener.onUpdate(entry);
+			if (entry.getStatus() != CheckStatus.UNKNOWN) {
+				entry.reset();
+				if (listener != null) {
+					listener.onUpdate(entry);
+				}
 			}
-		}
-	}
-
-	public void printChecks() {
-		for (BaseDevEnvCheckEntry entry : checks) {
-			System.out.println("Check: " + entry.getClass().getSimpleName() + " -- " + entry.getStatus().name() + ": "
-					+ entry.getMessage());
 		}
 	}
 
@@ -96,5 +84,15 @@ public class DevEnvChecker {
 
 	public void setListener(DevEnvEventListener listener) {
 		this.listener = listener;
+	}
+	
+	public boolean isFailed() {
+		for (BaseDevEnvCheckEntry entry : checks) {
+			if (entry.getStatus() == CheckStatus.FAIL) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 }

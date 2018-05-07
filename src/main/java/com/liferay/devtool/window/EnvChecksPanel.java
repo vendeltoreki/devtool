@@ -59,7 +59,6 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("Action called: " + e);
 				SwingWorker<List<BaseDevEnvCheckEntry>, Void> worker = createWorker();
 				worker.execute();
 			}
@@ -75,15 +74,12 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 		return new SwingWorker<List<BaseDevEnvCheckEntry>, Void>() {
 			@Override
 			public List<BaseDevEnvCheckEntry> doInBackground() {
-				System.out.println("T:" + Thread.currentThread().getName() + " -- do in background");
 				devEnvChecker.runChecks();
 				return devEnvChecker.getChecks();
 			}
 
 			@Override
 			public void done() {
-				System.out.println("T:" + Thread.currentThread().getName() + " -- DONE");
-
 				try {
 					List<BaseDevEnvCheckEntry> result = get();
 					for (CheckPanel p : checkPanelList) {
@@ -113,11 +109,8 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 
 	@Override
 	public void onUpdate(BaseDevEnvCheckEntry entry) {
-		System.out.println("T:" + Thread.currentThread().getName() + " -- event called " + entry);
-
 		java.awt.EventQueue.invokeLater(new Runnable() {
 			public void run() {
-				System.out.println("T:" + Thread.currentThread().getName() + " -- run in queue");
 				for (CheckPanel p : checkPanelList) {
 					p.refreshEntry();
 				}
