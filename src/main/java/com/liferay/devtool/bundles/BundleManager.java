@@ -14,8 +14,7 @@ public class BundleManager {
 		FileSystemScanner scanner = new FileSystemScanner();
 		scanner.scan("C:\\");
 		
-		bundles.clear();
-		bundles.addAll(scanner.getFoundBundles());
+		updateBundlesList(scanner.getFoundBundles());
 		
 		gitRepos.clear();
 		gitRepos.addAll(scanner.getFoundGitRepos());
@@ -27,11 +26,38 @@ public class BundleManager {
 		}
 	}
 
-	private void connectBundlesWithSources() {
-		Map<String,BundleEntry> bundleMap = new HashMap<>();
-		for (BundleEntry bundle : bundles) {
-			bundleMap.put(bundle.getRootDir().getAbsolutePath(), bundle);
+	private String getKey(BundleEntry entry) {
+		return entry.getRootDir().getAbsolutePath();
+	}
+	
+	private void updateBundlesList(List<BundleEntry> foundBundles) {
+		Map<String, BundleEntry> bundleMap = createBundleMap(bundles);
+
+		for (BundleEntry foundBundle : foundBundles) {
+			if (!bundleMap.containsKey(getKey(foundBundle))) {
+				bundles.add(foundBundle);
+				bundleMap.put(getKey(foundBundle), foundBundle);
+			}
 		}
+
+		Map<String, BundleEntry> foundBundleMap = createBundleMap(foundBundles);
+		
+		
+		
+		bundles.clear();
+		bundles.addAll(foundBundles);
+	}
+
+	private Map<String, BundleEntry> createBundleMap(List<BundleEntry> bundleList) {
+		Map<String,BundleEntry> bundleMap = new HashMap<>();
+		for (BundleEntry bundle : bundleList) {
+			bundleMap.put(getKey(bundle), bundle);
+		}
+		return bundleMap;
+	}
+
+	private void connectBundlesWithSources() {
+		Map<String, BundleEntry> bundleMap = createBundleMap(bundles);
 		
 		for (GitRepoEntry repo : gitRepos) {
 			if (repo.getBuildTargetDir() != null && bundleMap.containsKey(repo.getBuildTargetDir())) {
@@ -56,5 +82,9 @@ public class BundleManager {
 	
 	public void setBundleEventListener(BundleEventListener bundleEventListener) {
 		this.bundleEventListener = bundleEventListener;
+	}
+
+	public List<BundleEntry> getEntries() {
+		return bundles;
 	}
 }

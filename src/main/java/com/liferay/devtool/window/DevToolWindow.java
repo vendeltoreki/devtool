@@ -8,13 +8,14 @@ import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 
 import com.liferay.devtool.bundles.BundleDetector;
+import com.liferay.devtool.bundles.BundleManager;
 import com.liferay.devtool.devenv.DevEnvChecker;
 import com.liferay.devtool.utils.SysEnv;
 
 public class DevToolWindow {
 	private SysEnv sysEnv;
 	private DevEnvChecker devEnvChecker = new DevEnvChecker();
-	private BundleDetector bundleDetector = new BundleDetector();
+	private BundleManager bundleManager = new BundleManager();
 
 	public void createAndShowGUI() {
 		devEnvChecker.setSysEnv(sysEnv);
@@ -52,7 +53,7 @@ public class DevToolWindow {
 
 	protected JComponent createBundlesPanel() {
 		BundlesPanel panel = new BundlesPanel();
-		panel.setBundleDetector(bundleDetector);
+		panel.setBundleManager(bundleManager);
 		panel.init();
 		return panel;
 	}

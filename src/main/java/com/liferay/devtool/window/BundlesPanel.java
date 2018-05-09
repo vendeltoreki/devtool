@@ -2,34 +2,50 @@ package com.liferay.devtool.window;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingWorker;
+import javax.swing.text.html.HTMLEditorKit;
 
-import com.liferay.devtool.bundles.BundleDetector;
 import com.liferay.devtool.bundles.BundleEntry;
+import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.bundles.GitRepoEntry;
+import com.liferay.devtool.bundles.TempDirEntry;
 
-public class BundlesPanel extends JPanel {
+public class BundlesPanel extends JPanel implements MouseWheelListener {
 	private static final long serialVersionUID = -3140427339966486122L;
-	private BundleDetector bundleDetector = new BundleDetector();
+	private BundleManager bundleManager = null;
 	private List<BundlePanel> bundlePanelList = new ArrayList<>();
 	private JPanel bundleLister;
+	private int fontSize = 12;
+	private Font labelFont = new Font("Dialog", Font.BOLD, fontSize);
+	private Font textFont = new Font("Dialog", Font.PLAIN, fontSize);
 
-	public BundleDetector getBundleDetector() {
-		return bundleDetector;
+	public BundleManager getBundleDetector() {
+		return bundleManager;
 	}
 
-	public void setBundleDetector(BundleDetector bundleDetector) {
-		this.bundleDetector = bundleDetector;
+	public void setBundleManager(BundleManager bundleManager) {
+		this.bundleManager = bundleManager;
 	}
 
 	public void init() {
@@ -42,13 +58,34 @@ public class BundlesPanel extends JPanel {
 		BoxLayout layout = new BoxLayout(bundleLister, BoxLayout.Y_AXIS);
 		bundleLister.setLayout(layout);
 
-		SwingWorker<List<BundleEntry>, Void> worker = new SwingWorker<List<BundleEntry>, Void>() {
+
+		refreshButton.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				bundleLister.removeAll();
+				bundleLister.revalidate();
+				SwingWorker<List<BundleEntry>, Void> worker = createWorker();
+				worker.execute();
+			}
+		});
+
+		JScrollPane listScrollPane = new JScrollPane(bundleLister);
+		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
+
+		this.add(listScrollPane, BorderLayout.CENTER);
+		
+		listScrollPane.addMouseWheelListener(this);
+	}
+
+	private SwingWorker<List<BundleEntry>, Void> createWorker() {
+		return new SwingWorker<List<BundleEntry>, Void>() {
 			@Override
 			public List<BundleEntry> doInBackground() {
 				System.out.println("T:" + Thread.currentThread().getName() + " -- do in background");
-				bundleDetector.scan();
+				bundleManager.scanFileSystem();
 
-				return bundleDetector.getEntries();
+				return bundleManager.getEntries();
 			}
 
 			@Override
@@ -78,25 +115,10 @@ public class BundlesPanel extends JPanel {
 					} else {
 						why = e.getMessage();
 					}
-					System.err.println("Error retrieving file: " + why);
+					System.err.println("Error: " + why);
 				}
 			}
 		};
-
-		refreshButton.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				bundleLister.removeAll();
-				bundleLister.revalidate();
-				worker.execute();
-			}
-		});
-
-		JScrollPane listScrollPane = new JScrollPane(bundleLister);
-		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
-
-		this.add(listScrollPane, BorderLayout.CENTER);
 	}
 
 	private BundlePanel createBundlePanel(BundleEntry entry) {
@@ -110,7 +132,9 @@ public class BundlesPanel extends JPanel {
 		private BundleEntry entry;
 		private JLabel label;
 		// private JTextArea textArea;
-		private JLabel textArea;
+		//private JTextPane textArea;
+		private JEditorPane textArea;
+		private JPopupMenu popup;
 
 		public BundlePanel(BundleEntry entry) {
 			super();
@@ -125,14 +149,15 @@ public class BundlesPanel extends JPanel {
 			label = new JLabel(createLabelText());
 			label.setHorizontalAlignment(JLabel.LEFT);
 			this.add(label, BorderLayout.CENTER);
+			
+			createPopupMenu();
+			MouseListener popupListener = new PopupListener(popup);
+
+			label.addMouseListener(popupListener);
 
 			refreshEntry();
-
-			/*
-			 * JButton button = new JButton("Button"); res.add(button);
-			 */
 		}
-
+		
 		private String createLabelText() {
 			return entry.getName();
 		}
@@ -148,6 +173,7 @@ public class BundlesPanel extends JPanel {
 		public void refreshEntry() {
 			if (label != null) {
 				label.setText(createLabelText());
+				label.setFont(labelFont);
 			}
 
 			if (entry != null) {
@@ -155,14 +181,37 @@ public class BundlesPanel extends JPanel {
 					// textArea = new JTextArea(createDescription());
 					// textArea.setEditable(false);
 
-					textArea = new JLabel(createDescription());
-					textArea.setHorizontalAlignment(JLabel.LEFT);
+					/*textArea = new JTextPane();
+					textArea.setContentType("text/html");
+					textArea.setText(createDescription());
+					textArea.setEditable(false);
+					textArea.setBackground(null);
+					textArea.setBorder(null);
+					//textArea.setHorizontalAlignment(JLabel.LEFT);
 					textArea.setBackground(Color.WHITE);
 					textArea.setOpaque(true);
+					textArea.setFont(textFont);*/
 
+					
+			        textArea = new JEditorPane(new HTMLEditorKit().getContentType(),createDescription());
+			        textArea.setText(createDescription());
+			        
+			        /*Font font = UIManager.getFont("Label.font");
+			        String bodyRule = "body { font-family: " + font.getFamily() + "; " +
+			                "font-size: " + fontSize + "pt; }";
+			        ((HTMLDocument)textArea.getDocument()).getStyleSheet().addRule(bodyRule);*/
+			        
+			        textArea.setOpaque(true);
+			        textArea.setBorder(null);
+			        textArea.setEditable(false);
+			        
+			        textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+			        textArea.setFont(textFont);			        
+			        
 					this.add(textArea, BorderLayout.SOUTH);
 				} else {
 					textArea.setText(createDescription());
+					textArea.setFont(textFont);
 				}
 			}
 		}
@@ -177,7 +226,26 @@ public class BundlesPanel extends JPanel {
 			sb.append("DB driver: " + formatNotNull(entry.getDbDriverClass()) + "<br>\n");
 			sb.append("DB URL: " + formatNotNull(entry.getDbUrl()) + "<br>\n");
 			sb.append("DB user: " + formatNotNull(entry.getDbUsername()) + ", password="
-					+ formatNotNull(entry.getDbPassword()) + "\n");
+					+ formatNotNull(entry.getDbPassword()) + "<br>\n");
+
+			sb.append("<br>Git Repos:<br>");
+			if (entry.getGitRepos() != null && !entry.getGitRepos().isEmpty()) {
+				for (GitRepoEntry repo : entry.getGitRepos()) {
+					sb.append(repo.toString()+"\n");
+				}
+			} else {
+				sb.append("none<br>");
+			}
+			
+			sb.append("<br>Temp dirs:<br>");
+			if (entry.getTempDirs() != null && !entry.getTempDirs().isEmpty()) {
+				for (TempDirEntry tempDir : entry.getTempDirs()) {
+					sb.append(tempDir.getRelativePath()+" -- "+formatMaxLimitLong(tempDir.getTotalSize(), 0) +"<br>\n");
+				}
+			} else {
+				sb.append("none<br>");
+			}
+			
 			return sb.toString();
 		}
 
@@ -196,6 +264,96 @@ public class BundlesPanel extends JPanel {
 				return "<font color=red>" + value + "</font>";
 			}
 		}
+		
+		private String formatMaxLimitLong(long value, long maxLimit) {
+			if (value <= maxLimit) {
+				return "" + value;
+			} else {
+				return "<font color=red>" + value + "</font>";
+			}
+		}
+
+		private void createPopupMenu() {
+			JMenuItem menuItem;
+
+			popup = new JPopupMenu();
+			
+			menuItem = new JMenuItem("Actions");
+			menuItem.setEnabled(false);
+			popup.add(menuItem);
+			popup.addSeparator();
+			
+			addPopupMenuItem("Clean temp dirs", new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					System.out.println("Clean temp dirs is called on: "+entry.getName());
+				}
+			});
+			
+			addPopupMenuItem("Clean DB", new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					System.out.println("Clean DB is called on: "+entry.getName());
+				}
+			});
+		}
+
+		private void addPopupMenuItem(String name, ActionListener actionListener) {
+			JMenuItem menuItem = new JMenuItem(name);
+			menuItem.addActionListener(actionListener);
+			popup.add(menuItem);
+		}
 	}
 
+	class PopupListener extends MouseAdapter {
+		JPopupMenu popup;
+
+		PopupListener(JPopupMenu popupMenu) {
+			popup = popupMenu;
+		}
+
+		public void mousePressed(MouseEvent e) {
+			maybeShowPopup(e);
+		}
+
+		public void mouseReleased(MouseEvent e) {
+			maybeShowPopup(e);
+		}
+
+		private void maybeShowPopup(MouseEvent e) {
+			if (e.isPopupTrigger()) {
+				popup.show(e.getComponent(), e.getX(), e.getY());
+			}
+		}
+	}
+	
+	@Override
+	public void mouseWheelMoved(MouseWheelEvent e) {
+		boolean controlDown = (e.getModifiers() & InputEvent.CTRL_MASK) != 0;
+		
+		if (controlDown) {
+			fontSize -= e.getWheelRotation();
+			if (fontSize < 12) {
+				fontSize = 12;
+			}
+			
+			if (fontSize > 100) {
+				fontSize = 100;
+			}
+			
+			updateFontSize();
+		}
+	}
+
+	private void updateFontSize() {
+		labelFont = new Font(labelFont.getName(), labelFont.getStyle(), fontSize);
+		textFont = new Font(textFont.getName(), textFont.getStyle(), fontSize);
+		
+		for (BundlePanel p : bundlePanelList) {
+			p.refreshEntry();
+		}
+		bundleLister.revalidate();
+	}	
 }

@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class FileSystemScanner {
+public class EventBasedFileSystemScanner {
 	private int maxDepth = 5;
 	private Set<String> skipDirNames;
 	private Set<String> restrictedRootDirNames;
@@ -14,11 +14,12 @@ public class FileSystemScanner {
 	private List<GitRepoEntry> foundGitRepos = new ArrayList<>();
 	private List<BundleEntry> foundBundles = new ArrayList<>();
 	private Set<String> foundBundleDirs = new HashSet<>();
+	private FileSystemScanEventListener fileSystemScanEventListener;
 	
 	public static void main(String[] args) {
 		System.out.println("started");
 		long t = System.currentTimeMillis();
-		FileSystemScanner fss = new FileSystemScanner();
+		EventBasedFileSystemScanner fss = new EventBasedFileSystemScanner();
 		fss.scan("C:\\");
 		System.out.println("finished: " + (System.currentTimeMillis() - t) + " ms");
 	}
@@ -79,8 +80,9 @@ public class FileSystemScanner {
 				} else if (file.getName().startsWith("tomcat-")) {
 					if (!foundBundleDirs.contains(dir.getAbsolutePath())) {
 						foundBundleDirs.add(dir.getAbsolutePath());
-						BundleEntry bundleEntry = createBundleEntry(dir);
-						foundBundles.add(bundleEntry);
+						//BundleEntry bundleEntry = createBundleEntry(dir);
+						//foundBundles.add(bundleEntry);
+						sendUpdate(dir.getAbsolutePath());
 					}
 				} else {
 					if (!isRestrictedDir(depth, file.getName())) {
@@ -130,5 +132,15 @@ public class FileSystemScanner {
 
 	public List<GitRepoEntry> getFoundGitRepos() {
 		return foundGitRepos;
+	}
+
+	private void sendUpdate(String path) {
+		if (fileSystemScanEventListener != null) {
+			fileSystemScanEventListener.onFoundBundle(path);
+		}
+	}
+	
+	public void setFileSystemScanEventListener(FileSystemScanEventListener fileSystemScanEventListener) {
+		this.fileSystemScanEventListener = fileSystemScanEventListener;
 	}
 }

@@ -2,8 +2,12 @@ package com.liferay.devtool.window;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,11 +27,14 @@ import com.liferay.devtool.devenv.DevEnvChecker;
 import com.liferay.devtool.devenv.DevEnvEventListener;
 import com.liferay.devtool.devenv.checks.BaseDevEnvCheckEntry;
 
-public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
+public class EnvChecksPanel extends JPanel implements DevEnvEventListener, MouseWheelListener {
 	private static final long serialVersionUID = 3611565541554629442L;
 	private DevEnvChecker devEnvChecker;
 	private List<CheckPanel> checkPanelList = new ArrayList<>();
 	private JPanel envLister = new JPanel();
+	private int fontSize = 12;
+	private Font labelFont = new Font("Dialog", Font.BOLD, fontSize);
+	private Font textFont = new Font("Dialog", Font.PLAIN, fontSize);
 
 	public DevEnvChecker getDevEnvChecker() {
 		return devEnvChecker;
@@ -68,6 +75,36 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
 
 		this.add(listScrollPane, BorderLayout.CENTER);
+		
+		listScrollPane.addMouseWheelListener(this);
+		
+		/*this.addKeyListener(new KeyListener() {
+
+			@Override
+			public void keyTyped(KeyEvent e) {
+				System.out.println("key typed: "+e);
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+				System.out.println("key down: "+e);
+				if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0) {
+					listScrollPane.getVerticalScrollBar().setUnitIncrement(0);
+				} else {
+					listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
+				}
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				System.out.println("key up: "+e);
+				if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0) {
+					listScrollPane.getVerticalScrollBar().setUnitIncrement(0);
+				} else {
+					listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
+				}
+			}
+		});*/
 	}
 
 	private SwingWorker<List<BaseDevEnvCheckEntry>, Void> createWorker() {
@@ -95,7 +132,7 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 					} else {
 						why = e.getMessage();
 					}
-					System.err.println("Error retrieving file: " + why);
+					System.err.println("Error: " + why);
 				}
 			}
 		};
@@ -203,16 +240,19 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 
 			if (label != null) {
 				label.setText(createLabelText());
+				label.setFont(labelFont);
 			}
 
 			if (entry.getDescription() != null) {
 				if (textArea == null) {
 					textArea = new JTextArea(entry.getDescription());
 					textArea.setEditable(false);
+					textArea.setFont(textFont);
 					this.add(textArea, BorderLayout.SOUTH);
 				} else {
 					textArea.setText(entry.getDescription());
 					textArea.setVisible(true);
+					textArea.setFont(textFont);
 				}
 			} else {
 				if (textArea != null) {
@@ -221,6 +261,34 @@ public class EnvChecksPanel extends JPanel implements DevEnvEventListener {
 				}
 			}
 		}
+	}
+
+	@Override
+	public void mouseWheelMoved(MouseWheelEvent e) {
+		boolean controlDown = (e.getModifiers() & InputEvent.CTRL_MASK) != 0;
+		
+		if (controlDown) {
+			fontSize -= e.getWheelRotation();
+			if (fontSize < 12) {
+				fontSize = 12;
+			}
+			
+			if (fontSize > 100) {
+				fontSize = 100;
+			}
+			
+			updateFontSize();
+		}
+	}
+
+	private void updateFontSize() {
+		labelFont = new Font(labelFont.getName(), labelFont.getStyle(), fontSize);
+		textFont = new Font(textFont.getName(), textFont.getStyle(), fontSize);
+		
+		for (CheckPanel p : checkPanelList) {
+			p.refreshEntry();
+		}
+		envLister.revalidate();
 	}
 
 }

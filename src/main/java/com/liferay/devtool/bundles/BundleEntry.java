@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.List;
 
 public class BundleEntry {
+	private String rootDirPath;
 	private File rootDir;
 	private File tomcatDir;
 	private String name;
@@ -15,6 +16,15 @@ public class BundleEntry {
 	private String dbUsername;
 	private String dbPassword;
 	private List<GitRepoEntry> gitRepos;
+	private List<TempDirEntry> tempDirs;
+
+	public String getRootDirPath() {
+		return rootDirPath;
+	}
+
+	public void setRootDirPath(String rootDirPath) {
+		this.rootDirPath = rootDirPath;
+	}
 
 	public String getDbDriverClass() {
 		return dbDriverClass;
@@ -102,6 +112,14 @@ public class BundleEntry {
 
 	public void setGitRepos(List<GitRepoEntry> gitRepos) {
 		this.gitRepos = gitRepos;
+	}
+
+	public List<TempDirEntry> getTempDirs() {
+		return tempDirs;
+	}
+
+	public void setTempDirs(List<TempDirEntry> tempDirs) {
+		this.tempDirs = tempDirs;
 	}
 
 	@Override
