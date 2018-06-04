@@ -1,18 +1,16 @@
 package com.liferay.devtool.bundles;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+
+import javax.swing.filechooser.FileSystemView;
 
 public class EventBasedFileSystemScanner {
 	private int maxDepth = 5;
 	private Set<String> skipDirNames;
 	private Set<String> restrictedRootDirNames;
 	private int statDirCount = 0;
-	private List<GitRepoEntry> foundGitRepos = new ArrayList<>();
-	private List<BundleEntry> foundBundles = new ArrayList<>();
 	private Set<String> foundBundleDirs = new HashSet<>();
 	private FileSystemScanEventListener fileSystemScanEventListener;
 	
@@ -20,24 +18,38 @@ public class EventBasedFileSystemScanner {
 		System.out.println("started");
 		long t = System.currentTimeMillis();
 		EventBasedFileSystemScanner fss = new EventBasedFileSystemScanner();
-		fss.scan("C:\\");
+		fss.setFileSystemScanEventListener(new FileSystemScanEventListener() {
+			
+			@Override
+			public void onFoundGitRepo(String absolutePath) {
+				System.out.println("found GIT: "+absolutePath);
+			}
+			
+			@Override
+			public void onFoundBundle(String absolutePath) {
+				System.out.println("found Bundle: "+absolutePath);
+			}
+		});
+		fss.scanLocalDisks();
 		System.out.println("finished: " + (System.currentTimeMillis() - t) + " ms");
 	}
 
+	public void scanLocalDisks() {
+		FileSystemView fsv = FileSystemView.getFileSystemView();
+		for(File root : File.listRoots()) {
+			String rootDescription = fsv.getSystemTypeDescription(root);
+		    if (rootDescription.equals("Local Disk")) {
+		    	scan(root.getAbsolutePath());
+		    }
+		}
+	}
+	
 	public void scan(String dirPath) {
 		initSkipDirs();
 		File rootDir = new File(dirPath);
 		System.out.println(rootDir);
 		scanDir(rootDir, 1);
 
-		System.out.println("GIT Repos:");
-		for (GitRepoEntry entry : foundGitRepos) {
-			System.out.println("\t" + entry);
-		}
-		System.out.println("Bundle:");
-		for (BundleEntry entry : foundBundles) {
-			System.out.println("\t" + entry);
-		}
 		System.out.println("dir count: " + statDirCount);
 	}
 
@@ -76,34 +88,55 @@ public class EventBasedFileSystemScanner {
 		for (File file : list) {
 			if (file.isDirectory()) {
 				if (file.getName().equals(".git")) {
-					foundGitRepos.add(createGitRepoEntry(dir));
+					foundGitRepo(dir.getAbsolutePath());
 				} else if (file.getName().startsWith("tomcat-")) {
 					if (!foundBundleDirs.contains(dir.getAbsolutePath())) {
-						foundBundleDirs.add(dir.getAbsolutePath());
-						//BundleEntry bundleEntry = createBundleEntry(dir);
-						//foundBundles.add(bundleEntry);
-						sendUpdate(dir.getAbsolutePath());
+						if (checkIfLiferayDeployedOnTomcat(file)) {
+							foundBundleDirs.add(dir.getAbsolutePath());
+							foundBundle(dir.getAbsolutePath());
+						}
+					}
+				} else if (file.getName().startsWith("wildfly-")) {
+					if (!foundBundleDirs.contains(dir.getAbsolutePath())) {
+						if (checkIfLiferayDeployedOnWildFly(file)) {
+							foundBundleDirs.add(dir.getAbsolutePath());
+							foundBundle(dir.getAbsolutePath());
+						}
+					}
+				} else if (file.getName().startsWith("jboss-")) {
+					if (!foundBundleDirs.contains(dir.getAbsolutePath())) {
+						if (checkIfLiferayDeployedOnJBoss(file)) {
+							foundBundleDirs.add(dir.getAbsolutePath());
+							foundBundle(dir.getAbsolutePath());
+						}
 					}
 				} else {
 					if (!isRestrictedDir(depth, file.getName())) {
 						scanDir(file, depth + 1);
 					}
 				}
-			} else if (file.isFile()) {
 			}
 		}
 	}
 
-	private GitRepoEntry createGitRepoEntry(File gitRootDir) {
-		GitRepoEntryFactory gitRepoEntryFactory = new GitRepoEntryFactory();
-		GitRepoEntry repo = gitRepoEntryFactory.create(gitRootDir);
-		return repo;
+	private boolean checkIfLiferayDeployedOnTomcat(File webappServerRootDir) {
+		return checkIfFileExists(webappServerRootDir.getAbsolutePath()+"\\webapps\\ROOT\\WEB-INF\\lib\\portal-impl.jar");
 	}
 
-	private BundleEntry createBundleEntry(File bundleRootDir) {
-		BundleEntryFactory bundleEntryFactory = new BundleEntryFactory();
-		BundleEntry bundle = bundleEntryFactory.create(bundleRootDir);
-		return bundle;
+	private boolean checkIfLiferayDeployedOnWildFly(File webappServerRootDir) {
+		return checkIfFileExists(webappServerRootDir.getAbsolutePath()+"\\modules\\com\\liferay\\portal\\main\\portal-kernel.jar");
+	}
+
+	private boolean checkIfLiferayDeployedOnJBoss(File webappServerRootDir) {
+		return checkIfFileExists(webappServerRootDir.getAbsolutePath()+"\\standalone\\deployments\\marketplace-portlet.war");
+	}	
+	
+	private boolean checkIfFileExists(String filePath) {
+		File file = new File(filePath);
+		if (file.exists() && file.isFile() && file.length() > 0) {
+			return true;
+		}
+		return false;
 	}
 
 	private boolean isRestrictedDir(int depth, String name) {
@@ -126,17 +159,15 @@ public class EventBasedFileSystemScanner {
 		return false;
 	}
 
-	public List<BundleEntry> getFoundBundles() {
-		return foundBundles;
-	}
-
-	public List<GitRepoEntry> getFoundGitRepos() {
-		return foundGitRepos;
-	}
-
-	private void sendUpdate(String path) {
+	private void foundBundle(String path) {
 		if (fileSystemScanEventListener != null) {
 			fileSystemScanEventListener.onFoundBundle(path);
+		}
+	}
+
+	private void foundGitRepo(String path) {
+		if (fileSystemScanEventListener != null) {
+			fileSystemScanEventListener.onFoundGitRepo(path);
 		}
 	}
 	

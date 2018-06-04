@@ -6,7 +6,9 @@ import java.util.List;
 public class BundleEntry {
 	private String rootDirPath;
 	private File rootDir;
-	private File tomcatDir;
+	private File webServerDir;
+	private WebServerType webServerType;
+	private boolean multipleWebServers = false;
 	private String name;
 	private String tomcatVersion;
 	private int memoryXmx;
@@ -17,6 +19,10 @@ public class BundleEntry {
 	private String dbPassword;
 	private List<GitRepoEntry> gitRepos;
 	private List<TempDirEntry> tempDirs;
+	private String portalVersion;
+	private String portalPatches;
+	private DbSchemaEntry dbSchemaEntry;
+	private boolean deleted = false;
 
 	public String getRootDirPath() {
 		return rootDirPath;
@@ -66,12 +72,28 @@ public class BundleEntry {
 		this.rootDir = rootDir;
 	}
 
-	public File getTomcatDir() {
-		return tomcatDir;
+	public File getWebServerDir() {
+		return webServerDir;
 	}
 
-	public void setTomcatDir(File tomcatDir) {
-		this.tomcatDir = tomcatDir;
+	public void setWebServerDir(File webServerDir) {
+		this.webServerDir = webServerDir;
+	}
+
+	public WebServerType getWebServerType() {
+		return webServerType;
+	}
+
+	public void setWebServerType(WebServerType webServerType) {
+		this.webServerType = webServerType;
+	}
+
+	public boolean isMultipleWebServers() {
+		return multipleWebServers;
+	}
+
+	public void setMultipleWebServers(boolean multipleWebServers) {
+		this.multipleWebServers = multipleWebServers;
 	}
 
 	public String getName() {
@@ -122,9 +144,41 @@ public class BundleEntry {
 		this.tempDirs = tempDirs;
 	}
 
+	public String getPortalVersion() {
+		return portalVersion;
+	}
+
+	public void setPortalVersion(String portalVersion) {
+		this.portalVersion = portalVersion;
+	}
+
+	public String getPortalPatches() {
+		return portalPatches;
+	}
+
+	public void setPortalPatches(String portalPatches) {
+		this.portalPatches = portalPatches;
+	}
+
+	public DbSchemaEntry getDbSchemaEntry() {
+		return dbSchemaEntry;
+	}
+
+	public void setDbSchemaEntry(DbSchemaEntry dbSchemaEntry) {
+		this.dbSchemaEntry = dbSchemaEntry;
+	}
+
+	public boolean isDeleted() {
+		return deleted;
+	}
+
+	public void setDeleted(boolean deleted) {
+		this.deleted = deleted;
+	}
+
 	@Override
 	public String toString() {
-		return "BundleEntry [rootDir=" + rootDir + ", tomcatDir=" + tomcatDir + ", name=" + name + ", tomcatVersion="
+		return "BundleEntry [rootDir=" + rootDirPath + ", tomcatDir=" + webServerDir + ", name=" + name + ", tomcatVersion="
 				+ tomcatVersion + ", memoryXmx=" + memoryXmx + ", memoryPermSize=" + memoryPermSize + "]";
 	}
 

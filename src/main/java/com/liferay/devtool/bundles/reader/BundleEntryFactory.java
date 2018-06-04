@@ -1,4 +1,4 @@
-package com.liferay.devtool.bundles;
+package com.liferay.devtool.bundles.reader;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,11 +20,17 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
 
+import com.liferay.devtool.bundles.BundleEntry;
+import com.liferay.devtool.bundles.TempDirEntry;
+import com.liferay.devtool.bundles.WebServerType;
+
 public class BundleEntryFactory {
 	private BundleEntry bundleEntry;
 	private File rootDir;
-	private File tomcatDir;
-
+	private File webServerDir;
+	private WebServerType webServerType;
+	private int webServerCount = 0;
+	
 	public BundleEntry create(File bundleRootDir) {
 		rootDir = bundleRootDir;
 
@@ -38,20 +44,27 @@ public class BundleEntryFactory {
 		bundleEntry.setName(rootDir.getName());
 
 		String propertiesPath = rootDir.getAbsolutePath() + File.separator + "portal-ext.properties";
-
-		tomcatDir = findTomcatDir(rootDir);
-
-		bundleEntry.setTomcatDir(tomcatDir);
-
-		String setenvPath = tomcatDir.getAbsolutePath() + File.separator + "bin" + File.separator + "setenv.bat";
-
-		String mysqlJarPath = tomcatDir.getAbsolutePath() + File.separator + "lib" + File.separator + "ext"
-				+ File.separator + "mysql.jar";
-		String serverXmlPath = tomcatDir.getAbsolutePath() + File.separator + "conf" + File.separator + "server.xml";
-
 		readPropertiesFile(propertiesPath);
-		readSetenvFile(setenvPath);
-		readServerXml(serverXmlPath);
+
+		findWebServerDir(rootDir);
+
+		if (webServerDir != null) {
+			bundleEntry.setWebServerDir(webServerDir);
+			bundleEntry.setWebServerType(webServerType);
+			bundleEntry.setMultipleWebServers(webServerCount > 1);
+	
+			if (webServerType == WebServerType.TOMCAT) {
+				String setenvPath = webServerDir.getAbsolutePath() + File.separator + "bin" + File.separator + "setenv.bat";
+		
+				String mysqlJarPath = webServerDir.getAbsolutePath() + File.separator + "lib" + File.separator + "ext"
+						+ File.separator + "mysql.jar";
+				String serverXmlPath = webServerDir.getAbsolutePath() + File.separator + "conf" + File.separator + "server.xml";
+	
+				readSetenvFile(setenvPath);
+				readServerXml(serverXmlPath);
+			}
+		}
+		
 
 		scanTempDir("osgi/state");
 		scanTempDir("work");
@@ -66,14 +79,23 @@ public class BundleEntryFactory {
 
 	}
 
-	private File findTomcatDir(File bundleRootDir) {
+	private void findWebServerDir(File bundleRootDir) {
+		webServerCount = 0;
 		for (File dir : bundleRootDir.listFiles()) {
 			if (dir.isDirectory() && dir.getName().startsWith("tomcat-")) {
-				return dir;
+				webServerDir = dir;
+				webServerType = WebServerType.TOMCAT;
+				++webServerCount;
+			} else if (dir.isDirectory() && dir.getName().startsWith("wildfly-")) {
+				webServerDir = dir;
+				webServerType = WebServerType.WILDFLY;
+				++webServerCount;
+			} else if (dir.isDirectory() && dir.getName().startsWith("jboss-")) {
+				webServerDir = dir;
+				webServerType = WebServerType.JBOSS;
+				++webServerCount;
 			}
 		}
-
-		return null;
 	}
 
 	private void readPropertiesFile(String propertiesFilePath) {
@@ -154,7 +176,7 @@ public class BundleEntryFactory {
 		
 		String tomcatPrefix = "tomcat/";
 		if (path.startsWith(tomcatPrefix)) {
-			absolutePath = tomcatDir.getAbsolutePath() + File.separator + path.substring(tomcatPrefix.length());
+			absolutePath = webServerDir.getAbsolutePath() + File.separator + path.substring(tomcatPrefix.length());
 		} else {
 			absolutePath = rootDir.getAbsolutePath() + File.separator + path;
 		}

@@ -20,10 +20,10 @@ public class SimpleCommand {
 	public void run(String command) {
 		try {
 			Process p = sysEnv.getRuntimeProcess(command);
-			exitValue = p.waitFor();
 
 			stdOut = readInputStreamToList(p.getInputStream());
 			stdErr = readInputStreamToList(p.getErrorStream());
+			exitValue = p.waitFor();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {

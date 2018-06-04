@@ -12,7 +12,9 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -27,45 +29,62 @@ import javax.swing.SwingWorker;
 import javax.swing.text.html.HTMLEditorKit;
 
 import com.liferay.devtool.bundles.BundleEntry;
-import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.bundles.BundleEventListener;
+import com.liferay.devtool.bundles.BundleManager2;
 import com.liferay.devtool.bundles.GitRepoEntry;
 import com.liferay.devtool.bundles.TempDirEntry;
 
-public class BundlesPanel extends JPanel implements MouseWheelListener {
+public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEventListener {
 	private static final long serialVersionUID = -3140427339966486122L;
-	private BundleManager bundleManager = null;
+	private BundleManager2 bundleManager = null;
 	private List<BundlePanel> bundlePanelList = new ArrayList<>();
+	private Map<String,BundlePanel> bundlePanelMap = new HashMap<>();
 	private JPanel bundleLister;
 	private int fontSize = 12;
 	private Font labelFont = new Font("Dialog", Font.BOLD, fontSize);
 	private Font textFont = new Font("Dialog", Font.PLAIN, fontSize);
 
-	public BundleManager getBundleDetector() {
+	public BundleManager2 getBundleDetector() {
 		return bundleManager;
 	}
 
-	public void setBundleManager(BundleManager bundleManager) {
+	public void setBundleManager(BundleManager2 bundleManager) {
 		this.bundleManager = bundleManager;
 	}
 
 	public void init() {
 		this.setLayout(new BorderLayout());
 
+		JButton scanButton = new JButton("Scan");
 		JButton refreshButton = new JButton("Refresh");
-		this.add(refreshButton, BorderLayout.NORTH);
+
+		JPanel topPanel = new JPanel();
+		topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
+		
+		topPanel.add(scanButton);
+		topPanel.add(refreshButton);
+		this.add(topPanel, BorderLayout.NORTH);
 
 		bundleLister = new JPanel();
 		BoxLayout layout = new BoxLayout(bundleLister, BoxLayout.Y_AXIS);
 		bundleLister.setLayout(layout);
 
+		bundleManager.setBundleEventListener(this);
+
+		scanButton.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				SwingWorker<List<BundleEntry>, Void> worker = createWorker();
+				worker.execute();
+			}
+		});
 
 		refreshButton.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				bundleLister.removeAll();
-				bundleLister.revalidate();
-				SwingWorker<List<BundleEntry>, Void> worker = createWorker();
+				SwingWorker<List<BundleEntry>, Void> worker = createRefreshWorker();
 				worker.execute();
 			}
 		});
@@ -82,45 +101,33 @@ public class BundlesPanel extends JPanel implements MouseWheelListener {
 		return new SwingWorker<List<BundleEntry>, Void>() {
 			@Override
 			public List<BundleEntry> doInBackground() {
-				System.out.println("T:" + Thread.currentThread().getName() + " -- do in background");
 				bundleManager.scanFileSystem();
+				bundleManager.readDetails();
 
 				return bundleManager.getEntries();
 			}
 
 			@Override
 			public void done() {
-				System.out.println("T:" + Thread.currentThread().getName() + " -- DONE");
-
-				try {
-					List<BundleEntry> result = get();
-
-					bundlePanelList.clear();
-					for (BundleEntry entry : result) {
-						BundlePanel p = createBundlePanel(entry);
-						bundlePanelList.add(p);
-						bundleLister.add(p);
-					}
-
-					for (BundlePanel p : bundlePanelList) {
-						p.refreshEntry();
-					}
-					bundleLister.revalidate();
-				} catch (InterruptedException ignore) {
-				} catch (java.util.concurrent.ExecutionException e) {
-					String why = null;
-					Throwable cause = e.getCause();
-					if (cause != null) {
-						why = cause.getMessage();
-					} else {
-						why = e.getMessage();
-					}
-					System.err.println("Error: " + why);
-				}
 			}
 		};
 	}
 
+	private SwingWorker<List<BundleEntry>, Void> createRefreshWorker() {
+		return new SwingWorker<List<BundleEntry>, Void>() {
+			@Override
+			public List<BundleEntry> doInBackground() {
+				bundleManager.readDetails();
+
+				return bundleManager.getEntries();
+			}
+
+			@Override
+			public void done() {
+			}
+		};
+	}
+	
 	private BundlePanel createBundlePanel(BundleEntry entry) {
 		BundlePanel res = new BundlePanel(entry);
 		res.init();
@@ -159,7 +166,9 @@ public class BundlesPanel extends JPanel implements MouseWheelListener {
 		}
 		
 		private String createLabelText() {
-			return entry.getName();
+			return entry.getName() + 
+					(entry.getPortalVersion() != null ? (" - "+entry.getPortalVersion()) : "") +
+					(entry.getPortalPatches() != null ? (" - "+entry.getPortalPatches()) : "");
 		}
 
 		public BundleEntry getEntry() {
@@ -219,7 +228,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener {
 		private String createDescription() {
 			StringBuffer sb = new StringBuffer();
 			sb.append("<html>");
-			sb.append("root dir: " + entry.getRootDir().toString() + "<br>\n");
+			sb.append("root dir: " + entry.getRootDir() + "<br>\n");
 			sb.append("memory: xmx=" + formatLimitInt(entry.getMemoryXmx(), 4000) + ", perm="
 					+ formatLimitInt(entry.getMemoryPermSize(), 512) + "<br>\n");
 			sb.append("tomcat version: " + entry.getTomcatVersion() + "<br>\n");
@@ -228,13 +237,11 @@ public class BundlesPanel extends JPanel implements MouseWheelListener {
 			sb.append("DB user: " + formatNotNull(entry.getDbUsername()) + ", password="
 					+ formatNotNull(entry.getDbPassword()) + "<br>\n");
 
-			sb.append("<br>Git Repos:<br>");
 			if (entry.getGitRepos() != null && !entry.getGitRepos().isEmpty()) {
+				sb.append("<br>Git Repos:<br>");
 				for (GitRepoEntry repo : entry.getGitRepos()) {
-					sb.append(repo.toString()+"\n");
+					sb.append(repo.toString()+"<br>\n");
 				}
-			} else {
-				sb.append("none<br>");
 			}
 			
 			sb.append("<br>Temp dirs:<br>");
@@ -355,5 +362,37 @@ public class BundlesPanel extends JPanel implements MouseWheelListener {
 			p.refreshEntry();
 		}
 		bundleLister.revalidate();
+	}
+
+	@Override
+	public void onUpdate(BundleEntry entry) {
+		java.awt.EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				System.out.println("Entry event: "+entry);
+				
+				refreshEntry(entry);
+				/*bundleLister.revalidate();
+				for (BundlePanel p : bundlePanelList) {
+					p.repaint();
+				}
+				bundleLister.revalidate();*/
+			}
+
+		});		
 	}	
+
+	private void refreshEntry(BundleEntry entry) {
+		if (!bundlePanelMap.containsKey(entry.getRootDirPath())) {
+			BundlePanel bundlePanel = createBundlePanel(entry);
+			bundlePanelMap.put(entry.getRootDirPath(), bundlePanel);
+			bundlePanelList.add(bundlePanel);
+			bundleLister.add(bundlePanel);
+			
+			bundlePanel.refreshEntry();
+		} else {
+			BundlePanel bundlePanel = bundlePanelMap.get(entry.getRootDirPath());
+			bundlePanel.refreshEntry();
+		}
+	}
+
 }

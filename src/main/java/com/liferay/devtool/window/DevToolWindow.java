@@ -7,19 +7,20 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 
-import com.liferay.devtool.bundles.BundleDetector;
-import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.bundles.BundleManager2;
 import com.liferay.devtool.devenv.DevEnvChecker;
 import com.liferay.devtool.utils.SysEnv;
 
 public class DevToolWindow {
 	private SysEnv sysEnv;
 	private DevEnvChecker devEnvChecker = new DevEnvChecker();
-	private BundleManager bundleManager = new BundleManager();
+	private BundleManager2 bundleManager = new BundleManager2();
 
 	public void createAndShowGUI() {
 		devEnvChecker.setSysEnv(sysEnv);
 		devEnvChecker.addChecks();
+		
+		bundleManager.setSysEnv(sysEnv);
 
 		JFrame frame = new JFrame("Developer Tool");
 		frame.setSize(600, 400);

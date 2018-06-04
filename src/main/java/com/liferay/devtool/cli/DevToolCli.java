@@ -2,7 +2,7 @@ package com.liferay.devtool.cli;
 
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
-import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.bundles.BundleManager2;
 import com.liferay.devtool.devenv.DevEnvChecker;
 import com.liferay.devtool.devenv.DevEnvEventListener;
 import com.liferay.devtool.devenv.checks.BaseDevEnvCheckEntry;
@@ -47,9 +47,7 @@ public class DevToolCli implements DevEnvEventListener, BundleEventListener {
 	}
 
 	private void runBundleScan() {
-		println("not implemented yet");
-		
-		BundleManager bundleManager = new BundleManager();
+		BundleManager2 bundleManager = new BundleManager2();
 		bundleManager.setBundleEventListener(this);
 		bundleManager.scanFileSystem();
 	}
