@@ -3,6 +3,8 @@ package com.liferay.devtool.bundles;
 import java.io.File;
 import java.util.List;
 
+import com.liferay.devtool.process.ProcessEntry;
+
 public class BundleEntry {
 	private String rootDirPath;
 	private File rootDir;
@@ -22,6 +24,7 @@ public class BundleEntry {
 	private String portalVersion;
 	private String portalPatches;
 	private DbSchemaEntry dbSchemaEntry;
+	private ProcessEntry runningProcess;
 	private boolean deleted = false;
 
 	public String getRootDirPath() {
@@ -166,6 +169,14 @@ public class BundleEntry {
 
 	public void setDbSchemaEntry(DbSchemaEntry dbSchemaEntry) {
 		this.dbSchemaEntry = dbSchemaEntry;
+	}
+
+	public ProcessEntry getRunningProcess() {
+		return runningProcess;
+	}
+
+	public void setRunningProcess(ProcessEntry runningProcess) {
+		this.runningProcess = runningProcess;
 	}
 
 	public boolean isDeleted() {

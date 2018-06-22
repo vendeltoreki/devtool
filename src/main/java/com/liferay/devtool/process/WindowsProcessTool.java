@@ -2,13 +2,13 @@ package com.liferay.devtool.process;
 
 import static com.liferay.devtool.utils.StringUtils.notEmpty;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.base.Strings;
 import com.liferay.devtool.utils.SimpleCommand;
 import com.liferay.devtool.utils.StringUtils;
 import com.liferay.devtool.utils.SysEnv;
@@ -16,12 +16,15 @@ import com.liferay.devtool.utils.SysEnv;
 public class WindowsProcessTool {
 	private SysEnv sysEnv;
 	private List<Map<String,String>> tasklistOutput;
-	private List<Map<String,String>> wmicOutout;
-	private List<Map<String,String>> netstatOutout;
+	private List<Map<String,String>> wmicOutput;
+	private List<Map<String,String>> netstatOutput;
 	private Map<String,ProcessEntry> processes = new HashMap<>();
+	private boolean taskListCommandEnabled = false;
 	
 	public void refresh() {
-		runTaskListCommand();
+		if (taskListCommandEnabled) {
+			runTaskListCommand();
+		}
 		runWmicCommand();
 		runNetstatCommand();
 		
@@ -29,43 +32,50 @@ public class WindowsProcessTool {
 	}
 	
 	private void findProcesses() {
-		for(Map<String,String> record : tasklistOutput) {
-			String pid = record.get("PID");
-			if (notEmpty(pid)) {
-				ProcessEntry processEntry = getOrCreateProcessEntry(pid);
+		findProcessesInTaskList();
+		findProcessesInWmicOutput();
+		findProcessesInNetstatOutput();
+	}
 
-				String windowTitle = record.get("Window Title");
-				if (notEmpty(windowTitle)) {
-					processEntry.setWindowTitle(windowTitle);
-				}
-			}
-		}
+	public void printProcesses() {
+		String[] keywords = new String[] { "tomcat", "java", "ant", "mysqld" };
 		
-		for(Map<String,String> record : wmicOutout) {
-			String pid = record.get("ProcessId");
-			if (notEmpty(pid)) {
-				ProcessEntry processEntry = getOrCreateProcessEntry(pid);
+		for (String pid : processes.keySet()) {
+			ProcessEntry entry = processes.get(pid);
+			if (StringUtils.containsAny(entry.getCommandLine(), keywords) || 
+					StringUtils.containsAny(entry.getExecName(), keywords) || 
+					StringUtils.containsAny(entry.getWindowTitle(), keywords)) {
+				System.out.println(">>> "+pid+", "+entry.getShortName());
 				
-				String parentPid = record.get("ParentProcessId");
-				if (notEmpty(parentPid) && !parentPid.equals("0")) {
-					processEntry.setParentProcess(getOrCreateProcessEntry(parentPid));
-				}
+				System.out.println("\t"+entry.getCommandLine());
 				
-				String command = record.get("CommandLine");
-				if (notEmpty(command)) {
-					processEntry.setCommandLine(command);
+				if (entry.getBundlePath() != null) {
+					System.out.println("\tBUNDLE: "+entry.getBundlePath());
 				}
 
-				String desc = record.get("Description");
-				if (notEmpty(desc)) {
-					processEntry.setExecName(desc);
+				if (entry.getListeningPorts() != null && !entry.getListeningPorts().isEmpty()) {
+					System.out.println("\tPorts: "+StringUtils.join(entry.getListeningPorts(), ","));
 				}
 				
-				
+				System.out.print("\t"+pid);
+				ProcessEntry parentEntry = entry.getParentProcess();
+				int n = 0;
+				while (parentEntry != null && n < 10) {
+					System.out.print(" --> "+parentEntry.getPid() + " ("+ parentEntry.getShortName() + ")");
+					parentEntry = parentEntry.getParentProcess();
+					++n;
+				}
+				System.out.println();
 			}
 		}
+	}
+
+	private void findProcessesInNetstatOutput() {
+		if (netstatOutput == null) {
+			return;
+		}
 		
-		for(Map<String,String> record : netstatOutout) {
+		for(Map<String,String> record : netstatOutput) {
 			String pid = record.get("PID");
 			String protocol = record.get("Proto");
 			String state = record.get("State");
@@ -80,35 +90,73 @@ public class WindowsProcessTool {
 						(localAddr.startsWith("0.0.0.0:") || localAddr.startsWith("127.0.0.1:"))) {
 					
 					processEntry.addPort(StringUtils.getPort(localAddr));
-					System.out.println("--Listening:"+processEntry.getShortName()+" -- "+localAddr);
+					//System.out.println("--Listening:"+processEntry.getShortName()+" -- "+localAddr);
 				}
+			}
+		}
+	}
+
+	private void findProcessesInWmicOutput() {
+		if (wmicOutput == null) {
+			return;
+		}
+
+		for(Map<String,String> record : wmicOutput) {
+			String pid = record.get("ProcessId");
+			if (notEmpty(pid)) {
+				ProcessEntry processEntry = getOrCreateProcessEntry(pid);
+				
+				String parentPid = record.get("ParentProcessId");
+				if (notEmpty(parentPid) && !parentPid.equals("0")) {
+					processEntry.setParentProcess(getOrCreateProcessEntry(parentPid));
+				}
+				
+				String command = record.get("CommandLine");
+				if (notEmpty(command)) {
+					processEntry.setCommandLine(command);
+
+					String bundlePath = parseBundlePathFromCommand(command);
+					if (notEmpty(bundlePath)) {
+						processEntry.setBundlePath(bundlePath);
+					}
+				}
+				
+				String desc = record.get("Description");
+				if (notEmpty(desc)) {
+					processEntry.setExecName(desc);
+				}
+			}
+		}
+	}
+
+	private void findProcessesInTaskList() {
+		if (tasklistOutput == null) {
+			return;
+		}
+		
+		for(Map<String,String> record : tasklistOutput) {
+			String pid = record.get("PID");
+			if (notEmpty(pid)) {
+				ProcessEntry processEntry = getOrCreateProcessEntry(pid);
+
+				String windowTitle = record.get("Window Title");
+				if (notEmpty(windowTitle)) {
+					processEntry.setWindowTitle(windowTitle);
+				}
+			}
+		}
+	}
+
+	private String parseBundlePathFromCommand(String command) {
+		String tomcatHome = StringUtils.extractTomcatHomeFromCommand(command);
+		if (tomcatHome != null) {
+			File file = sysEnv.createFile(tomcatHome);
+			if (file.exists() && file.isDirectory()) {
+				return file.getParentFile().getAbsolutePath();
 			}
 		}
 		
-		for (String pid : processes.keySet()) {
-			ProcessEntry entry = processes.get(pid);
-			if (entry.getCommandLine() != null && (
-					entry.getCommandLine().toLowerCase().contains("tomcat") || 
-					entry.getCommandLine().toLowerCase().contains("java") || 
-					entry.getCommandLine().toLowerCase().contains("ant") || 
-					entry.getCommandLine().toLowerCase().contains("mysqld") 
-					)) {
-				System.out.println(">>> "+pid+", "+entry.getShortName());
-				
-				System.out.println("\t"+entry.getCommandLine());
-				if (entry.getListeningPorts() != null && !entry.getListeningPorts().isEmpty()) {
-					System.out.println("\tPorts: "+StringUtils.join(entry.getListeningPorts(), ","));
-				}
-				
-				System.out.print("\t"+pid);
-				ProcessEntry parentEntry = entry.getParentProcess();
-				while (parentEntry != null) {
-					System.out.print(" --> "+parentEntry.getPid() + " ("+ parentEntry.getShortName() + ")");
-					parentEntry = parentEntry.getParentProcess();
-				}
-				System.out.println();
-			}
-		}
+		return null;
 	}
 
 	private ProcessEntry getOrCreateProcessEntry(String pid) {
@@ -127,7 +175,7 @@ public class WindowsProcessTool {
 		SimpleCommand comm = new SimpleCommand();
 		comm.setSysEnv(sysEnv);
 
-		String command = "TASKLIST /V /FO CSV /FI \"USERNAME eq "+System.getenv("COMPUTERNAME")+"\\"+System.getenv("USERNAME")+"\"";
+		String command = "cmd.exe /c " + "TASKLIST /V /FO CSV /FI \"USERNAME eq "+System.getenv("COMPUTERNAME")+"\\"+System.getenv("USERNAME")+"\"";
 		comm.run(command);
 		tasklistOutput = processTaskListOutput(comm.getStdOut());
 	}
@@ -136,18 +184,18 @@ public class WindowsProcessTool {
 		SimpleCommand comm = new SimpleCommand();
 		comm.setSysEnv(sysEnv);
 
-		String command = "wmic process list /FORMAT:CSV";
+		String command = "cmd.exe /c " + "wmic process list /FORMAT:CSV";
 		comm.run(command);
-		wmicOutout = processWmicOutput(comm.getStdOut());
+		wmicOutput = processWmicOutput(comm.getStdOut());
 	}
 
 	private void runNetstatCommand() {
 		SimpleCommand comm = new SimpleCommand();
 		comm.setSysEnv(sysEnv);
 
-		String command = "netstat -nao";
+		String command = "cmd.exe /c " + "netstat -nao";
 		comm.run(command);
-		netstatOutout = processNetstatOutput(comm.getStdOut());
+		netstatOutput = processNetstatOutput(comm.getStdOut());
 	}
 	
 	protected List<Map<String,String>> processTaskListOutput(List<String> output) {
@@ -241,5 +289,11 @@ public class WindowsProcessTool {
 
 	public void setSysEnv(SysEnv sysEnv) {
 		this.sysEnv = sysEnv;
+	}
+	
+	public List<ProcessEntry> getProcessEntries() {
+		List<ProcessEntry> res = new ArrayList<>();
+		res.addAll(processes.values());
+		return res;
 	}
 }

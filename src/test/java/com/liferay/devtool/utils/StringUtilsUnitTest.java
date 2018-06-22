@@ -107,6 +107,33 @@ public class StringUtilsUnitTest {
 		assertThat(StringUtils.splitLast("ABC/DEF/GHI", "/"),
 				equalTo(new String[] {"ABC/DEF","GHI"}));
 	}
+
+	@Test
+	public void test_containsAny() throws Exception {
+		assertThat(StringUtils.containsAny(null, null),
+				equalTo(false));
+		
+		assertThat(StringUtils.containsAny(null, new String[] {""}),
+				equalTo(false));
+
+		assertThat(StringUtils.containsAny(null, new String[] {"a"}),
+				equalTo(false));
+
+		assertThat(StringUtils.containsAny(null, new String[] {""}),
+				equalTo(false));
+		
+		assertThat(StringUtils.containsAny("", new String[] {"a"}),
+				equalTo(false));
+
+		assertThat(StringUtils.containsAny("asdfgh qwerty", new String[] {"asdfgh"}),
+				equalTo(true));
+		
+		assertThat(StringUtils.containsAny("abc def ghi jkl", new String[] {"abc","xyz"}),
+				equalTo(true));
+
+		assertThat(StringUtils.containsAny("abc def ghi jkl", new String[] {"uvw","xyz"}),
+				equalTo(false));
+	}
 	
 	@Test
 	public void test_removeParamsFromUrl() throws Exception {
@@ -121,4 +148,12 @@ public class StringUtilsUnitTest {
 		assertThat(StringUtils.extractSchemaNameFromMySqlUrl(connString),
 				equalTo("lportal_62"));
 	}
+	
+	@Test
+	public void test_extractTomcatHomeFromCommand() throws Exception {
+		String command = "\"C:\\dev\\jdk1.8.0_151\\bin\\java.exe\"   -Djava.util.logging.config.file=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\conf\\logging.properties\" -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n  -Dfile.encoding=UTF8 -Djava.net.preferIPv4Stack=true  -Dorg.apache.catalina.loader.WebappClassLoader.ENABLE_CLEAR_REFERENCES=false -Duser.timezone=GMT -Xmx4000m -XX:MaxPermSize=512m  -Djava.endorsed.dirs=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\endorsed\" -classpath \"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\bin\\bootstrap.jar;c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\bin\\tomcat-juli.jar\" -Dcatalina.base=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\" -Dcatalina.home=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\" -Djava.io.tmpdir=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\temp\" org.apache.catalina.startup.Bootstrap  start";
+		assertThat(StringUtils.extractTomcatHomeFromCommand(command),
+				equalTo("c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32"));
+	}
+		
 }

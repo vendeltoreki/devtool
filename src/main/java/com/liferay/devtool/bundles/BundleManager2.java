@@ -5,10 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.liferay.devtool.bundles.reader.BundleDetailsReader;
 import com.liferay.devtool.bundles.reader.BundleJarReader;
 import com.liferay.devtool.bundles.reader.DbSchemaReader;
+import com.liferay.devtool.process.ProcessEntry;
+import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.SysEnv;
 
 public class BundleManager2 implements FileSystemScanEventListener {
@@ -20,28 +23,34 @@ public class BundleManager2 implements FileSystemScanEventListener {
 	private Map<String,GitRepoEntry> gitRepoMap = new HashMap<>();
 	
 	public void scanFileSystem() {
-		//removeDeletedEntries();
-		
 		EventBasedFileSystemScanner scanner = new EventBasedFileSystemScanner();
 		scanner.setFileSystemScanEventListener(this);
 		scanner.scanLocalDisks();
 	}
 
-	private void removeDeletedEntries() {
-		detectDeletedEntries();
-	}
-
-	private void detectDeletedEntries() {
-		for (BundleEntry bundle : bundles) {
-			File f = sysEnv.createFile(bundle.getRootDirPath());
-		}
-	}
-
 	public void readDetails() {
+		if (sysEnv.isWindows()) {
+			queryProcessEntries();
+		}
 		readBundleDetails();
 		readBundleVersions();
 		readGitRepoDetails();
 		readBundleDbs();
+	}
+
+	private void queryProcessEntries() {
+		WindowsProcessTool wp = new WindowsProcessTool();
+		wp.setSysEnv(sysEnv);
+		wp.refresh();
+
+		for (ProcessEntry process : wp.getProcessEntries()) {
+			if (process.getBundlePath() != null) {
+				if (bundleMap.containsKey(getBundleKey(process.getBundlePath()))) {
+					BundleEntry bundle = bundleMap.get(getBundleKey(process.getBundlePath()));
+					bundle.setRunningProcess(process);
+				}
+			}
+		}
 	}
 
 	private void readBundleDbs() {
@@ -73,8 +82,8 @@ public class BundleManager2 implements FileSystemScanEventListener {
 			gitRepoDetailsReader.setGitRepoEntry(gitRepo);
 			gitRepoDetailsReader.readDetails();
 			
-			if (gitRepo.getBuildTargetDir() != null && bundleMap.containsKey(gitRepo.getBuildTargetDir())) {
-				BundleEntry bundle = bundleMap.get(gitRepo.getBuildTargetDir());
+			if (gitRepo.getBuildTargetDir() != null && bundleMap.containsKey(getBundleKey(gitRepo.getBuildTargetDir()))) {
+				BundleEntry bundle = bundleMap.get(getBundleKey(gitRepo.getBuildTargetDir()));
 				if (bundle.getGitRepos() == null) {
 					bundle.setGitRepos(new ArrayList<>());
 				}
@@ -122,14 +131,18 @@ public class BundleManager2 implements FileSystemScanEventListener {
 
 	@Override
 	public void onFoundBundle(String absolutePath) {
-		if (!bundleMap.containsKey(absolutePath)) {
+		if (!bundleMap.containsKey(getBundleKey(absolutePath))) {
 			BundleEntry bundleEntry = new BundleEntry();
 			bundleEntry.setRootDirPath(absolutePath);
-			bundleMap.put(absolutePath, bundleEntry);
+			bundleMap.put(getBundleKey(absolutePath), bundleEntry);
 			bundles.add(bundleEntry);
 			
 			sendUpdate(bundleEntry);
 		}
+	}
+
+	private String getBundleKey(String bundlePath) {
+		return bundlePath.toLowerCase();
 	}
 
 	@Override

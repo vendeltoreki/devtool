@@ -39,6 +39,7 @@ public class EventBasedFileSystemScanner {
 		for(File root : File.listRoots()) {
 			String rootDescription = fsv.getSystemTypeDescription(root);
 		    if (rootDescription.equals("Local Disk")) {
+		    	System.out.println("scanning: "+root.getAbsolutePath());
 		    	scan(root.getAbsolutePath());
 		    }
 		}
@@ -47,10 +48,10 @@ public class EventBasedFileSystemScanner {
 	public void scan(String dirPath) {
 		initSkipDirs();
 		File rootDir = new File(dirPath);
-		System.out.println(rootDir);
+		//System.out.println(rootDir);
 		scanDir(rootDir, 1);
 
-		System.out.println("dir count: " + statDirCount);
+		//System.out.println("dir count: " + statDirCount);
 	}
 
 	private void initSkipDirs() {

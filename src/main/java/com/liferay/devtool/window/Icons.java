@@ -14,10 +14,15 @@ public class Icons {
 
 	static {
 		try {
-			IMG_APP = ImageIO.read(new File("resources/icons/tool.png"));
+			/*IMG_APP = ImageIO.read(new File("resources/icons/tool.png"));
 			IMG_PENDING = ImageIO.read(new File("resources/icons/v_pending.png"));
 			IMG_OK = ImageIO.read(new File("resources/icons/v_check.png"));
-			IMG_ERROR = ImageIO.read(new File("resources/icons/v_error.png"));
+			IMG_ERROR = ImageIO.read(new File("resources/icons/v_error.png"));*/
+			
+			IMG_APP = ImageIO.read(Icons.class.getResourceAsStream("/icons/tool.png"));
+			IMG_PENDING = ImageIO.read(Icons.class.getResourceAsStream("/icons/v_pending.png"));
+			IMG_OK = ImageIO.read(Icons.class.getResourceAsStream("/icons/v_check.png"));
+			IMG_ERROR = ImageIO.read(Icons.class.getResourceAsStream("/icons/v_error.png"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

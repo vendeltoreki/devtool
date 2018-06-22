@@ -25,4 +25,9 @@ public class SysEnv {
 		System.exit(status);
 	}
 
+	public boolean isWindows() {
+		String osName = System.getProperty("os.name");
+
+		return (osName != null && osName.toLowerCase().contains("windows"));		
+	}
 }

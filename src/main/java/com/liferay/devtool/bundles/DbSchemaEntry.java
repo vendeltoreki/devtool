@@ -4,6 +4,7 @@ public class DbSchemaEntry {
 	private String schemaName;
 	private int tableCount;
 	private String schemaVersion;
+	private boolean atDeployed = false;
 	
 	public String getSchemaName() {
 		return schemaName;
@@ -28,5 +29,12 @@ public class DbSchemaEntry {
 	public void setSchemaVersion(String schemaVersion) {
 		this.schemaVersion = schemaVersion;
 	}
-	
+
+	public boolean isAtDeployed() {
+		return atDeployed;
+	}
+
+	public void setAtDeployed(boolean atDeployed) {
+		this.atDeployed = atDeployed;
+	}
 }

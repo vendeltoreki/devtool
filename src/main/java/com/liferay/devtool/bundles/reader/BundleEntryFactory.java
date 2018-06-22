@@ -106,6 +106,7 @@ public class BundleEntryFactory {
 			File propertiesFile = new File(propertiesFilePath);
 			if (propertiesFile.exists() && propertiesFile.isFile()) { 
 				input = new FileInputStream(propertiesFilePath);
+				
 				prop.load(input);
 				
 				bundleEntry.setDbDriverClass(prop.getProperty("jdbc.default.driverClassName"));
@@ -127,7 +128,7 @@ public class BundleEntryFactory {
 	}
 
 	private void readSetenvFile(String headPath) {
-		System.out.println("setenv file: " + headPath);
+		//System.out.println("setenv file: " + headPath);
 		try (FileInputStream inputStream = new FileInputStream(headPath)) {
 			String everything = IOUtils.toString(inputStream, Charset.defaultCharset());
 			processSetenvFile(everything.split("\n"));
@@ -142,7 +143,7 @@ public class BundleEntryFactory {
 		for (String line : lines) {
 			// -Xmx4000m -XX:MaxPermSize=512m
 			if (line.contains("CATALINA_OPTS")) {
-				System.out.println("[CATALINA_OPTS]: " + line);
+				//System.out.println("[CATALINA_OPTS]: " + line);
 
 				String xmx = tryParseFirstMatch(line, "-Xmx([0-9]+)m");
 				String maxPerm = tryParseFirstMatch(line, "-XX:MaxPermSize=([0-9]+)m");
@@ -218,14 +219,14 @@ public class BundleEntryFactory {
 
 	            @Override
 	            public FileVisitResult visitFileFailed(Path file, IOException exc) {
-	                System.out.println("skipped: " + file + " (" + exc + ")");
+	                //System.out.println("skipped: " + file + " (" + exc + ")");
 	                return FileVisitResult.CONTINUE;
 	            }
 
 	            @Override
 	            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
 	                if (exc != null)
-	                    System.out.println("had trouble traversing: " + dir + " (" + exc + ")");
+	                    //System.out.println("had trouble traversing: " + dir + " (" + exc + ")");
 	                numberOfDirs.incrementAndGet();
 	                return FileVisitResult.CONTINUE;
 	            }
@@ -234,8 +235,8 @@ public class BundleEntryFactory {
 	        throw new AssertionError("walkFileTree will not throw IOException if the FileVisitor does not");
 	    }
 
-	    System.out.println("PATH="+path);
-	    System.out.println("\tsize="+size.get()+", files="+numberOfFiles.get()+", dirs="+numberOfDirs.get());
+	    //System.out.println("PATH="+path);
+	    //System.out.println("\tsize="+size.get()+", files="+numberOfFiles.get()+", dirs="+numberOfDirs.get());
 	    return new long[] {size.get(), numberOfFiles.get(), numberOfDirs.get()};
 	}	
 }

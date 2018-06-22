@@ -44,6 +44,7 @@ public class WindowsProcessUtil {
 		WindowsProcessTool wp = new WindowsProcessTool();
 		wp.setSysEnv(new SysEnv());
 		wp.refresh();
+		wp.printProcesses();
 	}
 
 	

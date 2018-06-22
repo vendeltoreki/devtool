@@ -12,7 +12,7 @@ public class OsTypeCheckEntry extends BaseDevEnvCheckEntry {
 	@Override
 	public void runCheck() {
 		String osName = sysEnv.getProperty("os.name");
-		;
+
 		if (osName.toLowerCase().contains("windows")) {
 			context.setOsType(OsType.WINDOWS);
 		} else {

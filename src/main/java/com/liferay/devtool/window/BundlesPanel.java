@@ -33,6 +33,7 @@ import com.liferay.devtool.bundles.BundleEventListener;
 import com.liferay.devtool.bundles.BundleManager2;
 import com.liferay.devtool.bundles.GitRepoEntry;
 import com.liferay.devtool.bundles.TempDirEntry;
+import com.liferay.devtool.utils.StringUtils;
 
 public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEventListener {
 	private static final long serialVersionUID = -3140427339966486122L;
@@ -181,8 +182,16 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 		public void refreshEntry() {
 			if (label != null) {
-				label.setText(createLabelText());
 				label.setFont(labelFont);
+				if (entry != null && entry.getRunningProcess() != null) {
+					label.setText("RUNNING - "+createLabelText());
+					label.setOpaque(true);
+					label.setBackground(Color.green);
+				} else {
+					label.setText(createLabelText());
+					label.setOpaque(false);
+					label.setBackground(Color.lightGray);
+				}
 			}
 
 			if (entry != null) {
@@ -231,26 +240,50 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 			sb.append("root dir: " + entry.getRootDir() + "<br>\n");
 			sb.append("memory: xmx=" + formatLimitInt(entry.getMemoryXmx(), 4000) + ", perm="
 					+ formatLimitInt(entry.getMemoryPermSize(), 512) + "<br>\n");
-			sb.append("tomcat version: " + entry.getTomcatVersion() + "<br>\n");
-			sb.append("DB driver: " + formatNotNull(entry.getDbDriverClass()) + "<br>\n");
-			sb.append("DB URL: " + formatNotNull(entry.getDbUrl()) + "<br>\n");
-			sb.append("DB user: " + formatNotNull(entry.getDbUsername()) + ", password="
-					+ formatNotNull(entry.getDbPassword()) + "<br>\n");
+			//sb.append("tomcat version: " + entry.getTomcatVersion() + "<br>\n");
+			sb.append("<ul>");
+			sb.append("<li>DB driver: " + formatNotNull(entry.getDbDriverClass()) + "</li>\n");
+			sb.append("<li>DB URL: " + formatNotNull(entry.getDbUrl()) + "</li>\n");
+			sb.append("<li>DB user: " + formatNotNull(entry.getDbUsername()) + ", password="
+					+ formatNotNull(entry.getDbPassword()) + "</li>\n");
+			sb.append("</ul>");
 
-			if (entry.getGitRepos() != null && !entry.getGitRepos().isEmpty()) {
-				sb.append("<br>Git Repos:<br>");
-				for (GitRepoEntry repo : entry.getGitRepos()) {
-					sb.append(repo.toString()+"<br>\n");
-				}
+			if (entry.getRunningProcess() != null) {
+				sb.append("<br>Running process:<br>");
+				sb.append("<ul>");
+				sb.append("<li>PID: " + entry.getRunningProcess().getPid() + "</li>\n");
+				sb.append("<li>exec name: " + entry.getRunningProcess().getExecName() + "</li>\n");
+				sb.append("<li>ports: " + StringUtils.join(entry.getRunningProcess().getListeningPorts(), ",") + "</li>\n");
+				sb.append("<li>command line: " + StringUtils.replaceStrings(entry.getRunningProcess().getCommandLine(), " -D", "<br>-D") + "</li>\n");
+				sb.append("</ul>");
+			}
+
+			if (entry.getDbSchemaEntry() != null) {
+				sb.append("<br>DB schema:<br>");
+				sb.append("<ul>");
+				sb.append("<li>schema name: <b>" + entry.getDbSchemaEntry().getSchemaName() + "</b></li>\n");
+				sb.append("<li>schema version: " + entry.getDbSchemaEntry().getSchemaVersion() + "</li>\n");
+				sb.append("<li>table count: " + entry.getDbSchemaEntry().getTableCount() + "</li>\n");
+				sb.append("<li>AT deployed: " + entry.getDbSchemaEntry().isAtDeployed() + "</li>\n");
+				sb.append("</ul>");
 			}
 			
-			sb.append("<br>Temp dirs:<br>");
-			if (entry.getTempDirs() != null && !entry.getTempDirs().isEmpty()) {
-				for (TempDirEntry tempDir : entry.getTempDirs()) {
-					sb.append(tempDir.getRelativePath()+" -- "+formatMaxLimitLong(tempDir.getTotalSize(), 0) +"<br>\n");
+			if (entry.getGitRepos() != null && !entry.getGitRepos().isEmpty()) {
+				sb.append("<br>Git Repos:<br>");
+				sb.append("<ul>");
+				for (GitRepoEntry repo : entry.getGitRepos()) {
+					sb.append("<li>"+repo.toString()+"</li>\n");
 				}
-			} else {
-				sb.append("none<br>");
+				sb.append("</ul>");
+			}
+			
+			if (entry.getTempDirs() != null && !entry.getTempDirs().isEmpty()) {
+				sb.append("<br>Temp dirs:<br>");
+				sb.append("<ul>");
+				for (TempDirEntry tempDir : entry.getTempDirs()) {
+					sb.append("<li>"+tempDir.getRelativePath()+" -- "+formatMaxLimitLong(tempDir.getTotalSize(), 0) +"</li>\n");
+				}
+				sb.append("</ul>");
 			}
 			
 			return sb.toString();
@@ -368,7 +401,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 	public void onUpdate(BundleEntry entry) {
 		java.awt.EventQueue.invokeLater(new Runnable() {
 			public void run() {
-				System.out.println("Entry event: "+entry);
+				//System.out.println("Entry event: "+entry);
 				
 				refreshEntry(entry);
 				/*bundleLister.revalidate();

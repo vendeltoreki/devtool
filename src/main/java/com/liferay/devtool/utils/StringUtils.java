@@ -2,6 +2,7 @@ package com.liferay.devtool.utils;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class StringUtils {
@@ -147,6 +148,48 @@ public class StringUtils {
 		}
 		
 		return null;
+	}
+
+	public static String extractTomcatHomeFromCommand(String command) {
+		String res = extractParameterFromJavaCommand(command, "catalina.home");
+		
+		if (res == null) {
+			res = extractParameterFromJavaCommand(command, "catalina.base");
+		}
+		
+		return res;
+	}
+
+	private static String extractParameterFromJavaCommand(String command, String paramName) {
+		// TODO escape paramName
+		Pattern pattern = Pattern.compile("-D"+paramName+"=\\\"(.*?)\\\"");
+		Matcher matcher = pattern.matcher(command);
+		if (matcher.find()) {
+		    return matcher.group(1);
+		}
+
+		return null;
+	}
+
+	public static boolean containsAny(String text, String[] keywords) {
+		if (text != null && keywords != null && keywords.length > 0) {
+			String lowerCaseText = text.toLowerCase();
+			for (String keyword : keywords) {
+				if (lowerCaseText.contains(keyword.toLowerCase())) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+
+	public static String replaceStrings(String text, String find, String replace) {
+		if (text == null || text.trim().length() == 0 || find == null || replace == null) {
+			return null;
+		}
+		
+		return text.replaceAll(find, replace);
 	}
 
 }
