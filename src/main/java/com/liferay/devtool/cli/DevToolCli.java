@@ -110,7 +110,9 @@ public class DevToolCli implements DevEnvEventListener, BundleEventListener {
 				println("\tname: "+bundle.getDbSchemaEntry().getSchemaName());
 				println("\tversion: "+bundle.getDbSchemaEntry().getSchemaVersion());
 				println("\ttable count: "+bundle.getDbSchemaEntry().getTableCount());
-				println("\tAT deployed: "+bundle.getDbSchemaEntry().isAtDeployed());
+				if (bundle.getDbSchemaEntry().hasDeployedApps()) {
+					println("\tDeployed apps: "+StringUtils.join(bundle.getDbSchemaEntry().getDeployedApps(),", "));
+				}
 			}
 
 			if (bundle.getTempDirs() != null && !bundle.getTempDirs().isEmpty()) {

@@ -25,6 +25,7 @@ public class BundleEntry {
 	private String portalPatches;
 	private DbSchemaEntry dbSchemaEntry;
 	private ProcessEntry runningProcess;
+	private PatchingToolEntry patchingToolEntry;
 	private boolean deleted = false;
 
 	public String getRootDirPath() {
@@ -177,6 +178,14 @@ public class BundleEntry {
 
 	public void setRunningProcess(ProcessEntry runningProcess) {
 		this.runningProcess = runningProcess;
+	}
+
+	public PatchingToolEntry getPatchingToolEntry() {
+		return patchingToolEntry;
+	}
+
+	public void setPatchingToolEntry(PatchingToolEntry patchingToolEntry) {
+		this.patchingToolEntry = patchingToolEntry;
 	}
 
 	public boolean isDeleted() {

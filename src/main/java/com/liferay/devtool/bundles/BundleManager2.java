@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.liferay.devtool.bundles.reader.BundleDetailsReader;
 import com.liferay.devtool.bundles.reader.BundleJarReader;
 import com.liferay.devtool.bundles.reader.DbSchemaReader;
+import com.liferay.devtool.bundles.reader.PatchingToolReader;
 import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.SysEnv;
@@ -34,6 +34,7 @@ public class BundleManager2 implements FileSystemScanEventListener {
 		}
 		readBundleDetails();
 		readBundleVersions();
+		readPatchingToolVersions();
 		readGitRepoDetails();
 		readBundleDbs();
 	}
@@ -75,6 +76,17 @@ public class BundleManager2 implements FileSystemScanEventListener {
 		}
 	}
 
+	private void readPatchingToolVersions() {
+		for (BundleEntry bundle : bundles) {
+			PatchingToolReader ptJarReader = new PatchingToolReader();
+			ptJarReader.setSysEnv(sysEnv);
+			ptJarReader.setBundleEntry(bundle);
+			ptJarReader.readDetails();
+			
+			sendUpdate(bundle);
+		}
+	}
+	
 	private void readGitRepoDetails() {
 		for (GitRepoEntry gitRepo : gitRepos) {
 			GitRepoDetailsReader gitRepoDetailsReader = new GitRepoDetailsReader();

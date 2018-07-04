@@ -24,7 +24,7 @@ public class JarManifestReader {
 	public Map<String, String> readJarFile(File file) {
 		Map<String,String> res = null;
 		
-		ZipFile zipFile;
+		ZipFile zipFile = null;
 		try {
 			zipFile = new ZipFile(file);
 			Enumeration<? extends ZipEntry> entries = zipFile.entries();
@@ -34,16 +34,10 @@ public class JarManifestReader {
 				ZipEntry entry = entries.nextElement();
 
 				if (entry.getName().toUpperCase().endsWith("MANIFEST.MF")) {
-					InputStream stream = zipFile.getInputStream(entry);
-					BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-					
 					ManifestDataReader manifestDataReader = new ManifestDataReader();
 					manifestDataReader.setWatchKeys(watchKeys);
 					
-					while (reader.ready()) {
-						String line = reader.readLine();
-						manifestDataReader.processLine(line);
-					}
+					readLinesOfInputStream(zipFile.getInputStream(entry), manifestDataReader);
 					
 					res = manifestDataReader.getData();
 					finished = true;
@@ -53,9 +47,33 @@ public class JarManifestReader {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (zipFile != null) {
+					zipFile.close();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+        }
 		
 		return res;
 	}
 
+	private void readLinesOfInputStream(InputStream stream, ManifestDataReader manifestDataReader) {
+		try(BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+			while (reader.ready()) {
+				String line = reader.readLine();
+				manifestDataReader.processLine(line);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}		
+	}
 }

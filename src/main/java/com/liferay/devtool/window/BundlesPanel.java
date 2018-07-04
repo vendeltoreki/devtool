@@ -264,7 +264,21 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				sb.append("<li>schema name: <b>" + entry.getDbSchemaEntry().getSchemaName() + "</b></li>\n");
 				sb.append("<li>schema version: " + entry.getDbSchemaEntry().getSchemaVersion() + "</li>\n");
 				sb.append("<li>table count: " + entry.getDbSchemaEntry().getTableCount() + "</li>\n");
-				sb.append("<li>AT deployed: " + entry.getDbSchemaEntry().isAtDeployed() + "</li>\n");
+				if (entry.getDbSchemaEntry().hasDeployedApps()) {
+					sb.append("<li>Deployed apps: "+StringUtils.join(entry.getDbSchemaEntry().getDeployedApps(),", ") + "</li>\n");
+				}
+				sb.append("</ul>");
+			}
+
+			if (entry.getPatchingToolEntry() != null) {
+				sb.append("<br>Patching tool:<br>");
+				sb.append("<ul>");
+				sb.append("<li>version: <b>" + entry.getPatchingToolEntry().getVersion() + "</b></li>\n");
+				sb.append("<li>build: " + entry.getPatchingToolEntry().getBuild() + "</li>\n");
+				sb.append("<li>internal: " + entry.getPatchingToolEntry().isInternal() + "</li>\n");
+				if (entry.getPatchingToolEntry().getSourcePath() != null) {
+					sb.append("<li>source path: " + entry.getPatchingToolEntry().getSourcePath() + "</li>\n");
+				}
 				sb.append("</ul>");
 			}
 			

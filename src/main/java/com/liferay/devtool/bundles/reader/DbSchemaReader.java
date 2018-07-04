@@ -32,14 +32,24 @@ public class DbSchemaReader {
 	}
 
 	public void readDetails() {
-		if (bundleEntry.getDbUrl() != null &&
-				bundleEntry.getDbDriverClass() != null &&
-				bundleEntry.getDbDriverClass().equals("com.mysql.jdbc.Driver") &&
-				bundleEntry.getDbUrl().startsWith("jdbc:mysql://localhost/")) {
+		if (dbParamsSpecified() && dbConnectionAllowed()) {
 			readMySqlSchemaData();
 		}
 	}
 
+	private boolean dbParamsSpecified() {
+		return 
+				bundleEntry.getDbUrl() != null &&
+				bundleEntry.getDbDriverClass() != null &&
+				bundleEntry.getDbUsername() != null &&
+				bundleEntry.getDbPassword() != null;
+	}
+
+	private boolean dbConnectionAllowed() {
+		return bundleEntry.getDbDriverClass().equals("com.mysql.jdbc.Driver") &&
+				bundleEntry.getDbUrl().startsWith("jdbc:mysql://localhost");
+	}
+	
 	private void readMySqlSchemaData() {
 		String schemaName = StringUtils.extractSchemaNameFromMySqlUrl(bundleEntry.getDbUrl());
 		DbSchemaEntry dbSchemaEntry = getDbSchemaEntry(schemaName);
@@ -61,7 +71,15 @@ public class DbSchemaReader {
 				}
 				
 				boolean atDeployed = queryAtDeployed(schemaName, con);
-				dbSchemaEntry.setAtDeployed(atDeployed);
+				if (atDeployed) {
+					dbSchemaEntry.addDeployedApp("AudienceTargeting");
+				}
+				
+				boolean growDeployed = queryGrowDeployed(schemaName, con);
+				if (growDeployed) {
+					dbSchemaEntry.addDeployedApp("GROW");
+				}
+				
 			}
 			
 			con.close();
@@ -97,6 +115,17 @@ public class DbSchemaReader {
 
 	private boolean queryAtDeployed(String schemaName, Connection con) {
 		return queryForInt("SELECT count(*) FROM information_schema.tables where table_schema='"+schemaName+"' and table_name like 'ct_%'", con) > 0;
+	}
+	
+	private boolean queryGrowDeployed(String schemaName, Connection con) {
+		return queryForInt("SELECT count(*) FROM information_schema.tables where table_schema='"+schemaName+"' and table_name in (\r\n" + 
+				"'analysis_analysisentry',\r\n" + 
+				"'analysis_analysisuser',\r\n" + 
+				"'candidate_candidateentry',\r\n" + 
+				"'decision_decisionentry',\r\n" + 
+				"'task_candidatemaintenance',\r\n" + 
+				"'task_taskentry'\r\n" + 
+				")", con) >= 3;
 	}
 
 	private int queryForInt(String query, Connection con) {

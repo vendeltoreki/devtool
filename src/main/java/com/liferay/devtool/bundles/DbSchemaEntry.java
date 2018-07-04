@@ -1,10 +1,13 @@
 package com.liferay.devtool.bundles;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class DbSchemaEntry {
 	private String schemaName;
 	private int tableCount;
 	private String schemaVersion;
-	private boolean atDeployed = false;
+	private Set<String> deployedApps = new HashSet<>();
 	
 	public String getSchemaName() {
 		return schemaName;
@@ -30,11 +33,15 @@ public class DbSchemaEntry {
 		this.schemaVersion = schemaVersion;
 	}
 
-	public boolean isAtDeployed() {
-		return atDeployed;
+	public void addDeployedApp(String appName) {
+		deployedApps.add(appName);
 	}
 
-	public void setAtDeployed(boolean atDeployed) {
-		this.atDeployed = atDeployed;
+	public Set<String> getDeployedApps() {
+		return deployedApps;
+	}
+
+	public boolean hasDeployedApps() {
+		return deployedApps != null && !deployedApps.isEmpty();
 	}
 }
