@@ -5,7 +5,7 @@
     <!--define folder properties-->
     <property name="dir.buildfile" value="."/>
     <property name="dir.workspace" value="${dir.buildfile}/.."/>
-    <property name="dir.jarfile" value="C:/liferay_docs/temp"/>
+    <property name="dir.jarfile" value="${dir.buildfile}/artifacts"/>
     <target name="create_run_jar">
         <jar destfile="${dir.jarfile}/LrDevTool6.jar">
             <manifest>
