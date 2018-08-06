@@ -2,4 +2,5 @@
 /bin/
 /build/
 
-/resources/icons/Thumbs.db
+Thumbs.db
+.DS_Store
