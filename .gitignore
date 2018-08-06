@@ -1,6 +1,7 @@
 /.gradle/
 /bin/
 /build/
+/artifacts/
 
-Thumbs.db
+/resources/icons/Thumbs.db
 .DS_Store
