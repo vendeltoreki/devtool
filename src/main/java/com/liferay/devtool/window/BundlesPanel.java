@@ -30,14 +30,14 @@ import javax.swing.text.html.HTMLEditorKit;
 
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
-import com.liferay.devtool.bundles.BundleManager2;
+import com.liferay.devtool.bundles.BundleManager;
 import com.liferay.devtool.bundles.GitRepoEntry;
 import com.liferay.devtool.bundles.TempDirEntry;
 import com.liferay.devtool.utils.StringUtils;
 
 public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEventListener {
 	private static final long serialVersionUID = -3140427339966486122L;
-	private BundleManager2 bundleManager = null;
+	private BundleManager bundleManager = null;
 	private List<BundlePanel> bundlePanelList = new ArrayList<>();
 	private Map<String,BundlePanel> bundlePanelMap = new HashMap<>();
 	private JPanel bundleLister;
@@ -45,11 +45,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 	private Font labelFont = new Font("Dialog", Font.BOLD, fontSize);
 	private Font textFont = new Font("Dialog", Font.PLAIN, fontSize);
 
-	public BundleManager2 getBundleDetector() {
-		return bundleManager;
-	}
-
-	public void setBundleManager(BundleManager2 bundleManager) {
+	public void setBundleManager(BundleManager bundleManager) {
 		this.bundleManager = bundleManager;
 	}
 

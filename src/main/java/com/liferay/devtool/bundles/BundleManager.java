@@ -14,7 +14,7 @@ import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.SysEnv;
 
-public class BundleManager2 implements FileSystemScanEventListener {
+public class BundleManager implements FileSystemScanEventListener {
 	private SysEnv sysEnv;
 	private BundleEventListener bundleEventListener;
 	private List<BundleEntry> bundles = new ArrayList<>();

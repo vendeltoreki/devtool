@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
-import com.liferay.devtool.bundles.BundleManager2;
+import com.liferay.devtool.bundles.BundleManager;
 import com.liferay.devtool.bundles.GitRepoEntry;
 import com.liferay.devtool.bundles.TempDirEntry;
 import com.liferay.devtool.devenv.DevEnvChecker;
@@ -55,7 +55,7 @@ public class DevToolCli implements DevEnvEventListener, BundleEventListener {
 		long t = System.currentTimeMillis();
 		SysEnv sysEnv = new SysEnv();
 
-		BundleManager2 bundleManager = new BundleManager2();
+		BundleManager bundleManager = new BundleManager();
 		bundleManager.setSysEnv(sysEnv);
 		bundleManager.setBundleEventListener(this);
 		bundleManager.scanFileSystem();
