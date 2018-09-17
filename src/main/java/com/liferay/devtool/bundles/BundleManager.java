@@ -12,9 +12,14 @@ import com.liferay.devtool.bundles.reader.DbSchemaReader;
 import com.liferay.devtool.bundles.reader.PatchingToolReader;
 import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
+import com.liferay.devtool.utils.ConfigStorage;
 import com.liferay.devtool.utils.SysEnv;
 
 public class BundleManager implements FileSystemScanEventListener {
+	private static final String PROPS_NAME = "bundle_paths";
+	private static final String PROPS_BUNDLE = "bundle.root.dir";
+	private static final String PROPS_GIT = "git.root.dir";
+
 	private SysEnv sysEnv;
 	private BundleEventListener bundleEventListener;
 	private List<BundleEntry> bundles = new ArrayList<>();
@@ -26,9 +31,15 @@ public class BundleManager implements FileSystemScanEventListener {
 		EventBasedFileSystemScanner scanner = new EventBasedFileSystemScanner();
 		scanner.setFileSystemScanEventListener(this);
 		scanner.scanLocalDisks();
+		
+		saveConfig();
 	}
 
 	public void readDetails() {
+		if (bundles == null || bundles.isEmpty()) {
+			tryLoadFromConfig();
+		}
+		
 		if (sysEnv.isWindows()) {
 			queryProcessEntries();
 		}
@@ -37,6 +48,42 @@ public class BundleManager implements FileSystemScanEventListener {
 		readPatchingToolVersions();
 		readGitRepoDetails();
 		readBundleDbs();
+	}
+
+	private void saveConfig() {
+		ConfigStorage configStorage = new ConfigStorage();
+		configStorage.setName(PROPS_NAME);
+		configStorage.setComment("Temporary storage for detected bundle paths");
+		
+		for (BundleEntry bundleEntry : bundles) {
+			configStorage.addToList(PROPS_BUNDLE, bundleEntry.getRootDirPath());
+		}
+
+		for (GitRepoEntry gitRepoEntry : gitRepos) {
+			configStorage.addToList(PROPS_GIT, gitRepoEntry.getRootDir().getAbsolutePath());
+		}
+		
+		configStorage.save();
+	}
+
+	private void tryLoadFromConfig() {
+		try {
+			ConfigStorage configStorage = new ConfigStorage();
+			configStorage.setName(PROPS_NAME);
+			configStorage.load();
+			
+			List<String> bundlePaths = configStorage.getList(PROPS_BUNDLE);
+			for (String path : bundlePaths) {
+				onFoundBundle(path);
+			}
+			
+			List<String> gitPaths = configStorage.getList(PROPS_GIT);
+			for (String path : gitPaths) {
+				onFoundGitRepo(path);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void queryProcessEntries() {
