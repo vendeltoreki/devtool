@@ -10,6 +10,7 @@ import com.liferay.devtool.bundles.reader.BundleDetailsReader;
 import com.liferay.devtool.bundles.reader.BundleJarReader;
 import com.liferay.devtool.bundles.reader.DbSchemaReader;
 import com.liferay.devtool.bundles.reader.PatchingToolReader;
+import com.liferay.devtool.process.BundleRunner;
 import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.ConfigStorage;
@@ -92,6 +93,10 @@ public class BundleManager implements FileSystemScanEventListener {
 		WindowsProcessTool wp = new WindowsProcessTool();
 		wp.setSysEnv(sysEnv);
 		wp.refresh();
+
+		for (BundleEntry bundle : bundles) {
+			bundle.setRunningProcess(null);
+		}
 
 		for (ProcessEntry process : wp.getProcessEntries()) {
 			if (process.getBundlePath() != null) {
@@ -229,10 +234,18 @@ public class BundleManager implements FileSystemScanEventListener {
 	}
 
 	public void startBundle(BundleEntry entry) {
+		BundleRunner bundleRunner = new BundleRunner();
+		bundleRunner.setBundleEntry(entry);
+		bundleRunner.start();
 		
+		queryProcessEntries();
 	}
 
 	public void stopBundle(BundleEntry entry) {
+		BundleRunner bundleRunner = new BundleRunner();
+		bundleRunner.setBundleEntry(entry);
+		bundleRunner.stop();
 		
+		queryProcessEntries();
 	}
 }

@@ -202,4 +202,8 @@ public class BundleEntry {
 				+ tomcatVersion + ", memoryXmx=" + memoryXmx + ", memoryPermSize=" + memoryPermSize + "]";
 	}
 
+	public boolean isRunning() {
+		return runningProcess != null;
+	}
+
 }

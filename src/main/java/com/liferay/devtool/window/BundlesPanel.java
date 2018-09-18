@@ -2,6 +2,7 @@ package com.liferay.devtool.window;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -132,6 +133,10 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 	}
 
 	class BundlePanel extends JPanel {
+		public static final String MENU_STOP_BUNDLE = "Stop Bundle";
+		public static final String MENU_START_BUNDLE = "Start Bundle";
+		public static final String MENU_CLEAN_DB = "Clean DB";
+		public static final String MENU_CLEAN_TEMP_DIRS = "Clean temp dirs";
 		private static final long serialVersionUID = -4063016827691757109L;
 		private BundleEntry entry;
 		private JLabel label;
@@ -155,7 +160,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 			this.add(label, BorderLayout.CENTER);
 			
 			createPopupMenu();
-			MouseListener popupListener = new PopupListener(popup);
+			MouseListener popupListener = new PopupListener(popup, entry);
 
 			label.addMouseListener(popupListener);
 
@@ -333,7 +338,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 			popup.add(menuItem);
 			popup.addSeparator();
 			
-			addPopupMenuItem("Clean temp dirs", new ActionListener() {
+			addPopupMenuItem(MENU_CLEAN_TEMP_DIRS, new ActionListener() {
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -341,7 +346,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				}
 			});
 			
-			addPopupMenuItem("Clean DB", new ActionListener() {
+			addPopupMenuItem(MENU_CLEAN_DB, new ActionListener() {
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -349,7 +354,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				}
 			});
 			
-			addPopupMenuItem("Start Bundle", new ActionListener() {
+			addPopupMenuItem(MENU_START_BUNDLE, new ActionListener() {
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -357,7 +362,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				}
 			});
 
-			addPopupMenuItem("Stop Bundle", new ActionListener() {
+			addPopupMenuItem(MENU_STOP_BUNDLE, new ActionListener() {
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
@@ -376,9 +381,11 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 	class PopupListener extends MouseAdapter {
 		JPopupMenu popup;
+		BundleEntry entry;
 
-		PopupListener(JPopupMenu popupMenu) {
+		PopupListener(JPopupMenu popupMenu, BundleEntry bundleEntry) {
 			popup = popupMenu;
+			entry = bundleEntry;
 		}
 
 		public void mousePressed(MouseEvent e) {
@@ -391,6 +398,22 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 		private void maybeShowPopup(MouseEvent e) {
 			if (e.isPopupTrigger()) {
+				for (Component component : popup.getComponents()) {
+					//System.out.println("menu item component: "+component);
+					if (component instanceof JMenuItem) {
+						JMenuItem menuItem = (JMenuItem)component;
+						
+						if (menuItem.getText().equals(BundlePanel.MENU_CLEAN_TEMP_DIRS)) {
+							menuItem.setEnabled(!entry.isRunning());
+						} else if (menuItem.getText().equals(BundlePanel.MENU_CLEAN_DB)) {
+							menuItem.setEnabled(!entry.isRunning());
+						} else if (menuItem.getText().equals(BundlePanel.MENU_START_BUNDLE)) {
+							menuItem.setEnabled(!entry.isRunning());							
+						} else if (menuItem.getText().equals(BundlePanel.MENU_STOP_BUNDLE)) {
+							menuItem.setEnabled(entry.isRunning());							
+						}
+					}
+				}
 				popup.show(e.getComponent(), e.getX(), e.getY());
 			}
 		}
