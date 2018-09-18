@@ -337,7 +337,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					System.out.println("Clean temp dirs is called on: "+entry.getName());
+					bundleManager.cleanTempDirs(entry);
 				}
 			});
 			
@@ -345,7 +345,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					System.out.println("Clean DB is called on: "+entry.getName());
+					bundleManager.cleanDb(entry);
 				}
 			});
 		}

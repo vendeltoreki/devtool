@@ -14,6 +14,7 @@ import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.ConfigStorage;
 import com.liferay.devtool.utils.SysEnv;
+import com.liferay.devtool.utils.TempDirUtil;
 
 public class BundleManager implements FileSystemScanEventListener {
 	private static final String PROPS_NAME = "bundle_paths";
@@ -188,6 +189,16 @@ public class BundleManager implements FileSystemScanEventListener {
 		return bundles;
 	}
 
+	public void cleanTempDirs(BundleEntry entry) {
+		TempDirUtil tempDirUtil = new TempDirUtil();
+		tempDirUtil.setPaths(entry);
+		tempDirUtil.clean();
+	}
+	
+	public void cleanDb(BundleEntry entry) {
+		System.out.println("Clean DB is called on: "+entry.getName());
+	}
+	
 	@Override
 	public void onFoundBundle(String absolutePath) {
 		if (!bundleMap.containsKey(getBundleKey(absolutePath))) {
