@@ -348,6 +348,23 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 					bundleManager.cleanDb(entry);
 				}
 			});
+			
+			addPopupMenuItem("Start Bundle", new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					bundleManager.startBundle(entry);
+				}
+			});
+
+			addPopupMenuItem("Stop Bundle", new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					bundleManager.stopBundle(entry);
+				}
+			});
+			
 		}
 
 		private void addPopupMenuItem(String name, ActionListener actionListener) {

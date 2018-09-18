@@ -176,7 +176,7 @@ public class TempDirUtil {
 		return tempDirEntries;
 	}
 
-	public void setPaths(BundleEntry entry) {
+	public void extractPathsFromBundleEntry(BundleEntry entry) {
 		setBundlePath(entry.getRootDir().getAbsolutePath());
 		setWebServerPath(entry.getWebServerDir().getAbsolutePath());
 	}

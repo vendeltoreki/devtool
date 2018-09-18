@@ -13,6 +13,7 @@ import com.liferay.devtool.bundles.reader.PatchingToolReader;
 import com.liferay.devtool.process.ProcessEntry;
 import com.liferay.devtool.process.WindowsProcessTool;
 import com.liferay.devtool.utils.ConfigStorage;
+import com.liferay.devtool.utils.DbUtil;
 import com.liferay.devtool.utils.SysEnv;
 import com.liferay.devtool.utils.TempDirUtil;
 
@@ -191,12 +192,14 @@ public class BundleManager implements FileSystemScanEventListener {
 
 	public void cleanTempDirs(BundleEntry entry) {
 		TempDirUtil tempDirUtil = new TempDirUtil();
-		tempDirUtil.setPaths(entry);
+		tempDirUtil.extractPathsFromBundleEntry(entry);
 		tempDirUtil.clean();
 	}
 	
 	public void cleanDb(BundleEntry entry) {
-		System.out.println("Clean DB is called on: "+entry.getName());
+		DbUtil dbUtil = new DbUtil();
+		dbUtil.setBundleEntry(entry);
+		dbUtil.cleanDb();
 	}
 	
 	@Override
@@ -223,5 +226,13 @@ public class BundleManager implements FileSystemScanEventListener {
 			gitRepoMap.put(absolutePath, gitRepoEntry);
 			gitRepos.add(gitRepoEntry);
 		}
+	}
+
+	public void startBundle(BundleEntry entry) {
+		
+	}
+
+	public void stopBundle(BundleEntry entry) {
+		
 	}
 }
