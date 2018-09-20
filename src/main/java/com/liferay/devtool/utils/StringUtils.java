@@ -218,4 +218,15 @@ public class StringUtils {
 		}
 	}
 	
+	public static String truncateString(String text, int maxLength) {
+		if (text == null) {
+			return null;
+		}
+		
+		if (text.length() <= maxLength) {
+			return text;
+		} else {
+			return text.substring(0, maxLength) + "..";
+		}
+	}
 }

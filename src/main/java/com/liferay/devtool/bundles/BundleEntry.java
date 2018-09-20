@@ -1,11 +1,18 @@
 package com.liferay.devtool.bundles;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.liferay.devtool.process.ProcessEntry;
 
 public class BundleEntry {
+	public static final String PORT_HTTP = "HTTP";
+	public static final String PORT_AJP = "AJP";
+	public static final String PORT_SHUTDOWN = "SHUTDOWN";
+	public static final String PORT_DEBUG = "DEBUG";
+	
 	private String rootDirPath;
 	private File rootDir;
 	private File webServerDir;
@@ -26,6 +33,7 @@ public class BundleEntry {
 	private DbSchemaEntry dbSchemaEntry;
 	private ProcessEntry runningProcess;
 	private PatchingToolEntry patchingToolEntry;
+	private Map<String,String> configuredServerPorts = new HashMap<>();
 	private boolean deleted = false;
 	private BundleStatus bundleStatus = BundleStatus.UNKNOWN;
 
@@ -215,4 +223,15 @@ public class BundleEntry {
 		this.bundleStatus = bundleStatus;
 	}
 
+	public void addConfiguredServerPort(String key, String value) {
+		configuredServerPorts.put(key, value);
+	}
+
+	public Map<String, String> getConfiguredServerPorts() {
+		return configuredServerPorts;
+	}
+
+	public void setConfiguredServerPorts(Map<String, String> configuredServerPorts) {
+		this.configuredServerPorts = configuredServerPorts;
+	}
 }

@@ -43,11 +43,11 @@ public class BundleDetailsReader {
 			bundleEntry.setDbUsername(newEntry.getDbUsername());
 			bundleEntry.setDbPassword(newEntry.getDbPassword());
 			bundleEntry.setTomcatVersion(newEntry.getTomcatVersion());
+			bundleEntry.setConfiguredServerPorts(newEntry.getConfiguredServerPorts());
 			bundleEntry.setDeleted(false);
 		} else {
 			bundleEntry.setDeleted(true);
 		}
 	}
-
 	
 }

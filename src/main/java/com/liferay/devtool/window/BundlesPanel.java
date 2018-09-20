@@ -171,9 +171,15 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 		}
 		
 		private String createLabelText() {
-			return entry.getName() + 
-					(entry.getPortalVersion() != null ? (" - "+entry.getPortalVersion()) : "") +
-					(entry.getPortalPatches() != null ? (" - "+entry.getPortalPatches()) : "");
+			if (entry.getName() != null) {
+				return StringUtils.truncateString(
+						entry.getName() + 
+						(entry.getPortalVersion() != null ? (" - "+entry.getPortalVersion()) : "") +
+						(entry.getPortalPatches() != null ? (" - "+entry.getPortalPatches()) : ""),
+						100);
+			} else {
+				return entry.getRootDirPath();
+			}
 		}
 
 		public BundleEntry getEntry() {
@@ -255,6 +261,9 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 			sb.append("root dir: " + entry.getRootDir() + "<br>\n");
 			sb.append("memory: xmx=" + formatLimitInt(entry.getMemoryXmx(), 4000) + ", perm="
 					+ formatLimitInt(entry.getMemoryPermSize(), 512) + "<br>\n");
+			
+			sb.append("Configured HTTP port: <b>" + entry.getConfiguredServerPorts().get(BundleEntry.PORT_HTTP) + "</b><br>\n");
+
 			//sb.append("tomcat version: " + entry.getTomcatVersion() + "<br>\n");
 			sb.append("<ul>");
 			sb.append("<li>DB driver: " + formatNotNull(entry.getDbDriverClass()) + "</li>\n");

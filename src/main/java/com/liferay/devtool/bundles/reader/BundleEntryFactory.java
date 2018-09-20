@@ -15,6 +15,7 @@ import org.apache.commons.io.IOUtils;
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.WebServerType;
 import com.liferay.devtool.utils.TempDirUtil;
+import com.liferay.devtool.utils.XmlParser;
 
 public class BundleEntryFactory {
 	private BundleEntry bundleEntry;
@@ -48,8 +49,9 @@ public class BundleEntryFactory {
 			if (webServerType == WebServerType.TOMCAT) {
 				String setenvPath = webServerDir.getAbsolutePath() + File.separator + "bin" + File.separator + "setenv.bat";
 		
-				String mysqlJarPath = webServerDir.getAbsolutePath() + File.separator + "lib" + File.separator + "ext"
-						+ File.separator + "mysql.jar";
+				/*String mysqlJarPath = webServerDir.getAbsolutePath() + File.separator + "lib" + File.separator + "ext"
+						+ File.separator + "mysql.jar";*/
+
 				String serverXmlPath = webServerDir.getAbsolutePath() + File.separator + "conf" + File.separator + "server.xml";
 	
 				readSetenvFile(setenvPath);
@@ -72,7 +74,24 @@ public class BundleEntryFactory {
 	}
 
 	private void readServerXml(String serverXmlPath) {
+		XmlParser xmlParser = new XmlParser();
+		xmlParser.readFile(serverXmlPath);
+		
+		String shutDownPort = xmlParser.getStringByXPath("/Server/@port");
+		if (shutDownPort != null) {
+			bundleEntry.addConfiguredServerPort(BundleEntry.PORT_SHUTDOWN, shutDownPort);
+		}
 
+		String httpPort = xmlParser.getStringByXPath("//Connector[@protocol='HTTP/1.1']/@port");
+		if (httpPort != null) {
+			bundleEntry.addConfiguredServerPort(BundleEntry.PORT_HTTP, httpPort);
+		}
+
+		String ajpPort = xmlParser.getStringByXPath("//Connector[starts-with(@protocol,'AJP/')]/@port");
+		if (ajpPort != null) {
+			bundleEntry.addConfiguredServerPort(BundleEntry.PORT_AJP, ajpPort);
+		}
+		
 	}
 
 	private void findWebServerDir(File bundleRootDir) {
