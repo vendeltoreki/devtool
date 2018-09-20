@@ -27,11 +27,13 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingWorker;
+import javax.swing.text.DefaultCaret;
 import javax.swing.text.html.HTMLEditorKit;
 
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
 import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.bundles.BundleStatus;
 import com.liferay.devtool.bundles.GitRepoEntry;
 import com.liferay.devtool.bundles.TempDirEntry;
 import com.liferay.devtool.utils.StringUtils;
@@ -89,6 +91,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 		JScrollPane listScrollPane = new JScrollPane(bundleLister);
 		listScrollPane.getVerticalScrollBar().setUnitIncrement(5);
+		listScrollPane.getVerticalScrollBar().getModel().getValue();
 
 		this.add(listScrollPane, BorderLayout.CENTER);
 		
@@ -184,10 +187,18 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 		public void refreshEntry() {
 			if (label != null) {
 				label.setFont(labelFont);
-				if (entry != null && entry.getRunningProcess() != null) {
-					label.setText("RUNNING - "+createLabelText());
+				if (entry != null && entry.getBundleStatus() == BundleStatus.RUNNING) {
+					label.setText(entry.getBundleStatus().name() + " - " + createLabelText());
 					label.setOpaque(true);
 					label.setBackground(Color.green);
+				} else if (entry != null && entry.getBundleStatus() == BundleStatus.STARTING) {
+					label.setText(entry.getBundleStatus().name() + " - " + createLabelText());
+					label.setOpaque(true);
+					label.setBackground(Color.yellow);
+				} else if (entry != null && entry.getBundleStatus() == BundleStatus.STOPPING) {
+					label.setText(entry.getBundleStatus().name() + " - " + createLabelText());
+					label.setOpaque(true);
+					label.setBackground(Color.yellow);
 				} else {
 					label.setText(createLabelText());
 					label.setOpaque(false);
@@ -214,6 +225,9 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 					
 			        textArea = new JEditorPane(new HTMLEditorKit().getContentType(),createDescription());
 			        textArea.setText(createDescription());
+			        
+			        DefaultCaret caret = (DefaultCaret) textArea.getCaret();
+			        caret.setUpdatePolicy(DefaultCaret.NEVER_UPDATE);
 			        
 			        /*Font font = UIManager.getFont("Label.font");
 			        String bodyRule = "body { font-family: " + font.getFamily() + "; " +
@@ -412,9 +426,9 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 						} else if (menuItem.getText().equals(BundlePanel.MENU_CLEAN_DB)) {
 							menuItem.setEnabled(!entry.isRunning());
 						} else if (menuItem.getText().equals(BundlePanel.MENU_START_BUNDLE)) {
-							menuItem.setEnabled(!entry.isRunning());							
+							menuItem.setEnabled(bundleManager.isBundleStartable(entry));							
 						} else if (menuItem.getText().equals(BundlePanel.MENU_STOP_BUNDLE)) {
-							menuItem.setEnabled(entry.isRunning());							
+							menuItem.setEnabled(bundleManager.isBundleStoppable(entry));							
 						}
 					}
 				}

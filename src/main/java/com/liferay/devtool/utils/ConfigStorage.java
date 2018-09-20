@@ -126,7 +126,7 @@ public class ConfigStorage {
     		
     		if (keyId != null) {
     			String keyPart = getKeyPart(keyStr);
-        		System.out.println("key: "+keyStr+", keyPart="+keyPart+", id="+keyId);
+        		//System.out.println("key: "+keyStr+", keyPart="+keyPart+", id="+keyId);
     			if (maxKeys.containsKey(keyPart)) {
     				if (keyId.intValue() > maxKeys.get(keyPart).intValue()) {
         				maxKeys.put(keyPart, keyId);
@@ -146,7 +146,7 @@ public class ConfigStorage {
 	        	
 	        	String value = props.getProperty(key);
 	        	if (value != null) {
-		        	System.out.println("adding "+key+" = "+value);
+		        	//System.out.println("adding "+key+" = "+value);
 		        	addToList(keyPart, value);
 	        	}
 	        }

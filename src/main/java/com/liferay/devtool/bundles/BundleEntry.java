@@ -27,6 +27,7 @@ public class BundleEntry {
 	private ProcessEntry runningProcess;
 	private PatchingToolEntry patchingToolEntry;
 	private boolean deleted = false;
+	private BundleStatus bundleStatus = BundleStatus.UNKNOWN;
 
 	public String getRootDirPath() {
 		return rootDirPath;
@@ -204,6 +205,14 @@ public class BundleEntry {
 
 	public boolean isRunning() {
 		return runningProcess != null;
+	}
+
+	public BundleStatus getBundleStatus() {
+		return bundleStatus;
+	}
+
+	public void setBundleStatus(BundleStatus bundleStatus) {
+		this.bundleStatus = bundleStatus;
 	}
 
 }

@@ -125,7 +125,7 @@ public class PatchingToolReader {
 						Path rootPath = FileSystems.getDefault().getPath(propertiesFile.getParentFile().getAbsolutePath());
 						sourcePath = rootPath.resolve(path).normalize().toAbsolutePath().toString();
 					}
-					System.out.println("SRC="+sourcePath);
+					//System.out.println("SRC="+sourcePath);
 					patchingToolEntry.setSourcePath(sourcePath);
 				}
 			}

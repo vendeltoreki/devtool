@@ -96,6 +96,7 @@ public class BundleManager implements FileSystemScanEventListener {
 
 		for (BundleEntry bundle : bundles) {
 			bundle.setRunningProcess(null);
+			bundle.setBundleStatus(BundleStatus.STOPPED);
 		}
 
 		for (ProcessEntry process : wp.getProcessEntries()) {
@@ -103,6 +104,7 @@ public class BundleManager implements FileSystemScanEventListener {
 				if (bundleMap.containsKey(getBundleKey(process.getBundlePath()))) {
 					BundleEntry bundle = bundleMap.get(getBundleKey(process.getBundlePath()));
 					bundle.setRunningProcess(process);
+					bundle.setBundleStatus(BundleStatus.RUNNING);
 				}
 			}
 		}
@@ -233,19 +235,35 @@ public class BundleManager implements FileSystemScanEventListener {
 		}
 	}
 
-	public void startBundle(BundleEntry entry) {
-		BundleRunner bundleRunner = new BundleRunner();
-		bundleRunner.setBundleEntry(entry);
-		bundleRunner.start();
-		
-		queryProcessEntries();
+	public void startBundle(BundleEntry bundleEntry) {
+		if (isBundleStartable(bundleEntry)) {
+			BundleRunner bundleRunner = new BundleRunner();
+			bundleRunner.setBundleEntry(bundleEntry);
+			bundleRunner.start();
+			
+			bundleEntry.setBundleStatus(BundleStatus.STARTING);
+			
+			sendUpdate(bundleEntry);
+		}
 	}
 
-	public void stopBundle(BundleEntry entry) {
-		BundleRunner bundleRunner = new BundleRunner();
-		bundleRunner.setBundleEntry(entry);
-		bundleRunner.stop();
-		
-		queryProcessEntries();
+	public void stopBundle(BundleEntry bundleEntry) {
+		if (isBundleStoppable(bundleEntry)) {
+			BundleRunner bundleRunner = new BundleRunner();
+			bundleRunner.setBundleEntry(bundleEntry);
+			bundleRunner.stop();
+			
+			bundleEntry.setBundleStatus(BundleStatus.STOPPING);
+			
+			sendUpdate(bundleEntry);
+		}
+	}
+	
+	public boolean isBundleStartable(BundleEntry bundleEntry) {
+		return bundleEntry != null && bundleEntry.getBundleStatus() == BundleStatus.STOPPED;
+	}
+
+	public boolean isBundleStoppable(BundleEntry bundleEntry) {
+		return bundleEntry != null && bundleEntry.getBundleStatus() == BundleStatus.RUNNING;
 	}
 }
