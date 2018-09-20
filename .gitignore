@@ -5,3 +5,5 @@
 
 /resources/icons/Thumbs.db
 .DS_Store
+/bundle_paths.properties
+/bundle_scan.properties

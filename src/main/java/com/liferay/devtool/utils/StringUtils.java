@@ -2,6 +2,8 @@ package com.liferay.devtool.utils;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -192,4 +194,28 @@ public class StringUtils {
 		return text.replaceAll(find, replace);
 	}
 
+	public static Set<String> createLowerStringSet(String value, String separator) {
+		return createLowerStringSet(value.split(separator));
+	}
+
+	public static Set<String> createLowerStringSet(String[] values) {
+		Set<String> res = new HashSet<>();
+		for (String dirName : values) {
+			res.add(dirName.trim().toLowerCase());
+		}
+		return res;
+	}
+
+	public static Integer tryParseInt(String value) {
+		if (value != null && value.trim().length() > 0) {
+			try {
+				return Integer.parseInt(value);
+			} catch (NumberFormatException nfe) {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+	
 }

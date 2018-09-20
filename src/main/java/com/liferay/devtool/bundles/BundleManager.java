@@ -33,7 +33,7 @@ public class BundleManager implements FileSystemScanEventListener {
 	public void scanFileSystem() {
 		EventBasedFileSystemScanner scanner = new EventBasedFileSystemScanner();
 		scanner.setFileSystemScanEventListener(this);
-		scanner.scanLocalDisks();
+		scanner.scanByConfig();
 		
 		saveConfig();
 	}

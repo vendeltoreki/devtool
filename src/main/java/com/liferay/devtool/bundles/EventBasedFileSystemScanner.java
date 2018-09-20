@@ -1,18 +1,28 @@
 package com.liferay.devtool.bundles;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.swing.filechooser.FileSystemView;
 
+import com.liferay.devtool.utils.ConfigStorage;
+import com.liferay.devtool.utils.StringUtils;
+
 public class EventBasedFileSystemScanner {
+	private static final String PROPS_ENABLED_SCAN_DIR = "enabled.scan.dir";
+	private static final String PROPS_MAXDEPTH = "scan.max.depth";
+	private static final String PROPS_SKIP_ROOT_DIR_NAMES = "skip.root.dirs";
+	private static final String PROPS_SKIP_DIR_NAMES = "skip.dirs";
 	private int maxDepth = 5;
 	private Set<String> skipDirNames;
 	private Set<String> restrictedRootDirNames;
-	private int statDirCount = 0;
 	private Set<String> foundBundleDirs = new HashSet<>();
 	private FileSystemScanEventListener fileSystemScanEventListener;
+	private ConfigStorage configStorage = new ConfigStorage("bundle_scan","Stores bundle scanning options");
 	
 	public static void main(String[] args) {
 		System.out.println("started");
@@ -34,6 +44,107 @@ public class EventBasedFileSystemScanner {
 		System.out.println("finished: " + (System.currentTimeMillis() - t) + " ms");
 	}
 
+	public EventBasedFileSystemScanner() {
+		super();
+		initSkipDirs();
+	}
+
+	public void scanByConfig() {
+		boolean exists = configStorage.load();
+		
+		if (exists) {
+			loadConfigValues();
+
+			for (String scanDirPath : configStorage.getList(PROPS_ENABLED_SCAN_DIR)) {
+				scan(scanDirPath);
+			}
+		} else {
+			scanLocalDisks();
+			createConfig();
+		}
+	}
+	
+	private void loadConfigValues() {
+		Integer maxDepthValue = StringUtils.tryParseInt(configStorage.getValue(PROPS_MAXDEPTH));
+		if (maxDepthValue != null) {
+			maxDepth = maxDepthValue;
+		}
+		
+		restrictedRootDirNames = StringUtils.createLowerStringSet(configStorage.getValue(PROPS_SKIP_ROOT_DIR_NAMES), ";");
+		skipDirNames = StringUtils.createLowerStringSet(configStorage.getValue(PROPS_SKIP_ROOT_DIR_NAMES), ";");
+	}
+
+	private void createConfig() {
+		Set<String> rootDirs = extractRootDirsFromFoundBundles();
+		
+		for (String rootDir : rootDirs) {
+			configStorage.addToList(PROPS_ENABLED_SCAN_DIR, rootDir);
+		}
+
+		configStorage.addValue(PROPS_MAXDEPTH, String.valueOf(maxDepth));
+		configStorage.addValue(PROPS_SKIP_ROOT_DIR_NAMES, StringUtils.join(restrictedRootDirNames, ";"));
+		configStorage.addValue(PROPS_SKIP_DIR_NAMES, StringUtils.join(skipDirNames, ";"));
+		
+		configStorage.save();
+	}
+
+	private Set<String> extractRootDirsFromFoundBundles() {
+		Set<String> rootDirs = new HashSet<>();
+		
+		for (String foundBundleDirPath : foundBundleDirs) {
+			File foundBundleDir = new File(foundBundleDirPath);
+			
+			if (foundBundleDir.exists()) {
+				File parent = foundBundleDir.getParentFile();
+				if (parent != null) {
+					parent = findParentIfThisIsProbablyTicketNumber(parent);
+					
+					String parentPath = parent.getAbsolutePath() + File.separator;
+					if (!rootDirs.contains(parentPath)) {
+						rootDirs.add(parentPath);
+					}
+				}
+			}
+		}
+		
+		rootDirs = removeRedundantSubDirectories(rootDirs);
+		return rootDirs;
+	}
+
+	private File findParentIfThisIsProbablyTicketNumber(File file) {
+		if (isProbablyTicketNumber(file.getName())) {
+			return file.getParentFile() != null ? file.getParentFile() : file;
+		} else {
+			return file;
+		}
+	}
+
+	private boolean isProbablyTicketNumber(String name) {
+		return name.matches("[A-Z]{3,20}\\-[0-9]{1,4}");
+	}
+
+	private Set<String> removeRedundantSubDirectories(Set<String> rootDirs) {
+		List<String> orderedList = new ArrayList<>(rootDirs);
+		
+		Collections.sort(orderedList);
+
+		boolean changed = false;
+		do {
+			changed = false;
+			for (int i = orderedList.size()-1; i>=1; --i) {
+				String actual = orderedList.get(i);
+				String previous = orderedList.get(i-1);
+				
+				if (actual.startsWith(previous)) {
+					orderedList.remove(i);
+					changed = true;
+				}
+			}
+		} while (changed);
+
+		return new HashSet<>(orderedList);
+	}
+
 	public void scanLocalDisks() {
 		FileSystemView fsv = FileSystemView.getFileSystemView();
 		for(File root : File.listRoots()) {
@@ -46,36 +157,22 @@ public class EventBasedFileSystemScanner {
 	}
 	
 	public void scan(String dirPath) {
-		initSkipDirs();
 		File rootDir = new File(dirPath);
-		//System.out.println(rootDir);
 		scanDir(rootDir, 1);
-
-		//System.out.println("dir count: " + statDirCount);
 	}
 
 	private void initSkipDirs() {
-		String[] dirNames = new String[] { ".gradle", "caches", "modules", "work", "osgi", "AppData",
-				"Application Data", "Microsoft", "Package Cache" };
+		skipDirNames = StringUtils.createLowerStringSet(new String[] {
+				".gradle", "caches", "modules", "work", "osgi", "AppData",
+				"Application Data", "Microsoft", "Package Cache" });
 
-		skipDirNames = new HashSet<>();
-		for (String dirName : dirNames) {
-			skipDirNames.add(dirName.trim().toLowerCase());
-		}
-
-		String[] rootNames = new String[] { "Apps", "Drivers", "Intel", "langpacks", "PerfLogs", "Program Files",
+		restrictedRootDirNames = StringUtils.createLowerStringSet(new String[] {
+				"Apps", "Drivers", "Intel", "langpacks", "PerfLogs", "Program Files",
 				"Program Files (x86)", "ProgramData", "Recovery", "tmp", "Windows", "$Recycle.Bin",
-				"System Volume Information" };
-
-		restrictedRootDirNames = new HashSet<>();
-		for (String dirName : rootNames) {
-			restrictedRootDirNames.add(dirName.trim().toLowerCase());
-		}
+				"System Volume Information" });
 	}
 
 	private void scanDir(File dir, int depth) {
-		++statDirCount;
-
 		if (dir == null) {
 			return;
 		}

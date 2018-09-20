@@ -17,7 +17,17 @@ public class ConfigStorage {
 	private Map<String, String> singleValues = new HashMap<>();
 	private Map<String, List<String>> listValues = new HashMap<>();
 	private boolean xml = false;
-	
+
+	public ConfigStorage() {
+		super();
+	}
+
+	public ConfigStorage(String name, String comment) {
+		super();
+		this.name = name;
+		this.comment = comment;
+	}
+
 	public boolean isXml() {
 		return xml;
 	}
@@ -87,7 +97,8 @@ public class ConfigStorage {
 		}
 	}
 
-	public void load() {
+	public boolean load() {
+		boolean exists = false;
 	    Properties props = new Properties();
 	    InputStream is = null;
 	 
@@ -112,9 +123,12 @@ public class ConfigStorage {
 	        }
 	        
 	        loadFromProperties(props);
+	        exists = true;
 	    } catch ( Exception e ) {
 	    	e.printStackTrace();
 	    }
+	    
+	    return exists;
 	}
 
 	private void loadFromProperties(Properties props) {
@@ -201,4 +215,7 @@ public class ConfigStorage {
 		return listValues.get(key);
 	}
 
+	public String getValue(String key) {
+		return singleValues.get(key);
+	}
 }
