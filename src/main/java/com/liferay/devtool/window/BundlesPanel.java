@@ -268,6 +268,10 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 				if (entry.getDbSchemaEntry().hasDeployedApps()) {
 					sb.append("<li>Deployed apps: "+StringUtils.join(entry.getDbSchemaEntry().getDeployedApps(),", ") + "</li>\n");
 				}
+				if (entry.getDbSchemaEntry().getSizeInMb() != null) {
+					sb.append("<li>Size in MB: " + entry.getDbSchemaEntry().getSizeInMb() + "</li>\n");
+				}
+				
 				sb.append("</ul>");
 			}
 

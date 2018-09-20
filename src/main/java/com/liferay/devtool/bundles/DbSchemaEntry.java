@@ -8,6 +8,7 @@ public class DbSchemaEntry {
 	private int tableCount;
 	private String schemaVersion;
 	private Set<String> deployedApps = new HashSet<>();
+	private Double sizeInMb;
 	
 	public String getSchemaName() {
 		return schemaName;
@@ -43,5 +44,13 @@ public class DbSchemaEntry {
 
 	public boolean hasDeployedApps() {
 		return deployedApps != null && !deployedApps.isEmpty();
+	}
+
+	public Double getSizeInMb() {
+		return sizeInMb;
+	}
+
+	public void setSizeInMb(Double sizeInMb) {
+		this.sizeInMb = sizeInMb;
 	}
 }

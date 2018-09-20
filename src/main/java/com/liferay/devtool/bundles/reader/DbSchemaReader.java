@@ -80,6 +80,10 @@ public class DbSchemaReader {
 					dbSchemaEntry.addDeployedApp("GROW");
 				}
 				
+				Double sizeInMb = querySizeInMb(schemaName, con);
+				if (sizeInMb != null) {
+					dbSchemaEntry.setSizeInMb(sizeInMb);
+				}
 			}
 			
 			con.close();
@@ -126,6 +130,23 @@ public class DbSchemaReader {
 				"'task_candidatemaintenance',\r\n" + 
 				"'task_taskentry'\r\n" + 
 				")", con) >= 3;
+	}
+
+	private Double querySizeInMb(String schemaName, Connection con) {
+		Double res = null;
+
+		try {
+			String sizeString = queryForString("SELECT\r\n" +
+					"ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) as DB_Size_in_MB\r\n" + 
+					"FROM information_schema.tables\r\n" + 
+					"WHERE table_schema = '"+schemaName+"'\r\n" + 
+					"GROUP BY table_schema", con);
+			res = Double.parseDouble(sizeString);
+		} catch (Exception e) {
+			// ignore
+		}
+		
+		return res;
 	}
 
 	private int queryForInt(String query, Connection con) {
