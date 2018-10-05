@@ -15,6 +15,7 @@ public class DevToolWindow {
 	private SysEnv sysEnv;
 	private DevEnvChecker devEnvChecker = new DevEnvChecker();
 	private BundleManager bundleManager = new BundleManager();
+	private JLabel statusLabel;
 
 	public void createAndShowGUI() {
 		devEnvChecker.setSysEnv(sysEnv);
@@ -27,9 +28,9 @@ public class DevToolWindow {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setIconImage(Icons.IMG_APP);
 
-		JLabel emptyLabel = new JLabel("Test");
+		statusLabel = new JLabel("Ready");
 		// emptyLabel.setPreferredSize(new Dimension(175, 100));
-		frame.getContentPane().add(emptyLabel, BorderLayout.NORTH);
+		frame.getContentPane().add(statusLabel, BorderLayout.NORTH);
 
 		JTabbedPane tabbedPane = new JTabbedPane();
 		JComponent envPanel = createEnvPanel();
@@ -56,6 +57,7 @@ public class DevToolWindow {
 		BundlesPanel panel = new BundlesPanel();
 		panel.setBundleManager(bundleManager);
 		panel.init();
+		panel.setStatusLabel(statusLabel);
 		return panel;
 	}
 

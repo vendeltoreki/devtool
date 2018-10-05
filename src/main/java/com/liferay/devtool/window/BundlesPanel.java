@@ -47,6 +47,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 	private int fontSize = 12;
 	private Font labelFont = new Font("Dialog", Font.BOLD, fontSize);
 	private Font textFont = new Font("Dialog", Font.PLAIN, fontSize);
+	private JLabel statusLabel;
 
 	public void setBundleManager(BundleManager bundleManager) {
 		this.bundleManager = bundleManager;
@@ -102,6 +103,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 		return new SwingWorker<List<BundleEntry>, Void>() {
 			@Override
 			public List<BundleEntry> doInBackground() {
+				updateStatus("Scanning bundles...");
 				bundleManager.scanFileSystem();
 				bundleManager.readDetails();
 
@@ -110,6 +112,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 			@Override
 			public void done() {
+				updateStatus("Bundle scanning done.");
 			}
 		};
 	}
@@ -118,6 +121,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 		return new SwingWorker<List<BundleEntry>, Void>() {
 			@Override
 			public List<BundleEntry> doInBackground() {
+				updateStatus("Reading bundles...");
 				bundleManager.readDetails();
 
 				return bundleManager.getEntries();
@@ -125,6 +129,7 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 
 			@Override
 			public void done() {
+				updateStatus("Reading bundles done.");
 			}
 		};
 	}
@@ -503,6 +508,21 @@ public class BundlesPanel extends JPanel implements MouseWheelListener, BundleEv
 			BundlePanel bundlePanel = bundlePanelMap.get(entry.getRootDirPath());
 			bundlePanel.refreshEntry();
 		}
+	}
+	
+	private void updateStatus(String statusMessage) {
+		java.awt.EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				if (statusLabel != null) {
+					statusLabel.setText(statusMessage);
+				}
+			}
+
+		});			
+	}
+
+	public void setStatusLabel(JLabel statusLabel) {
+		this.statusLabel = statusLabel;
 	}
 
 }
