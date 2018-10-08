@@ -9,6 +9,7 @@ import java.util.Set;
 
 import javax.swing.filechooser.FileSystemView;
 
+import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.utils.ConfigStorage;
 import com.liferay.devtool.utils.StringUtils;
 
@@ -22,7 +23,7 @@ public class EventBasedFileSystemScanner {
 	private Set<String> restrictedRootDirNames;
 	private Set<String> foundBundleDirs = new HashSet<>();
 	private FileSystemScanEventListener fileSystemScanEventListener;
-	private ConfigStorage configStorage = new ConfigStorage("bundle_scan","Stores bundle scanning options");
+	private DevToolContext context;
 	
 	public static void main(String[] args) {
 		System.out.println("started");
@@ -50,21 +51,23 @@ public class EventBasedFileSystemScanner {
 	}
 
 	public void scanByConfig() {
+		ConfigStorage configStorage = new ConfigStorage("bundle_scan","Stores bundle scanning options");
+		configStorage.setContext(context);
 		boolean exists = configStorage.load();
 		
 		if (exists) {
-			loadConfigValues();
+			loadConfigValues(configStorage);
 
 			for (String scanDirPath : configStorage.getList(PROPS_ENABLED_SCAN_DIR)) {
 				scan(scanDirPath);
 			}
 		} else {
 			scanLocalDisks();
-			createConfig();
+			createConfig(configStorage);
 		}
 	}
 	
-	private void loadConfigValues() {
+	private void loadConfigValues(ConfigStorage configStorage) {
 		Integer maxDepthValue = StringUtils.tryParseInt(configStorage.getValue(PROPS_MAXDEPTH));
 		if (maxDepthValue != null) {
 			maxDepth = maxDepthValue;
@@ -74,7 +77,7 @@ public class EventBasedFileSystemScanner {
 		skipDirNames = StringUtils.createLowerStringSet(configStorage.getValue(PROPS_SKIP_ROOT_DIR_NAMES), ";");
 	}
 
-	private void createConfig() {
+	private void createConfig(ConfigStorage configStorage) {
 		Set<String> rootDirs = extractRootDirsFromFoundBundles();
 		
 		for (String rootDir : rootDirs) {
@@ -269,6 +272,10 @@ public class EventBasedFileSystemScanner {
 		}
 	}
 	
+	public void setContext(DevToolContext context) {
+		this.context = context;
+	}
+
 	public void setFileSystemScanEventListener(FileSystemScanEventListener fileSystemScanEventListener) {
 		this.fileSystemScanEventListener = fileSystemScanEventListener;
 	}

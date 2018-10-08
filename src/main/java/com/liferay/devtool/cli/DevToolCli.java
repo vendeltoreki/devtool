@@ -2,6 +2,7 @@ package com.liferay.devtool.cli;
 
 import java.util.List;
 
+import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
 import com.liferay.devtool.bundles.BundleManager;
@@ -14,7 +15,8 @@ import com.liferay.devtool.utils.StringUtils;
 import com.liferay.devtool.utils.SysEnv;
 
 public class DevToolCli implements DevEnvEventListener, BundleEventListener {
-
+	private DevToolContext context;
+	
 	public void run(String[] args) {
 		if (args.length >= 1) {
 			if (args[0].trim().toLowerCase().equals("check")) {
@@ -53,10 +55,9 @@ public class DevToolCli implements DevEnvEventListener, BundleEventListener {
 
 	private void runBundleScan() {
 		long t = System.currentTimeMillis();
-		SysEnv sysEnv = new SysEnv();
 
 		BundleManager bundleManager = new BundleManager();
-		bundleManager.setSysEnv(sysEnv);
+		bundleManager.setContext(context);
 		bundleManager.setBundleEventListener(this);
 		bundleManager.scanFileSystem();
 		
@@ -176,4 +177,7 @@ public class DevToolCli implements DevEnvEventListener, BundleEventListener {
 		return entry.getRootDir() != null;
 	}
 
+	public void setContext(DevToolContext context) {
+		this.context = context;
+	}
 }

@@ -7,21 +7,21 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 
+import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundles.BundleManager;
 import com.liferay.devtool.devenv.DevEnvChecker;
-import com.liferay.devtool.utils.SysEnv;
 
 public class DevToolWindow {
-	private SysEnv sysEnv;
+	private DevToolContext context;
 	private DevEnvChecker devEnvChecker = new DevEnvChecker();
 	private BundleManager bundleManager = new BundleManager();
 	private JLabel statusLabel;
 
 	public void createAndShowGUI() {
-		devEnvChecker.setSysEnv(sysEnv);
+		devEnvChecker.setSysEnv(context.getSysEnv());
 		devEnvChecker.addChecks();
 		
-		bundleManager.setSysEnv(sysEnv);
+		bundleManager.setContext(context);
 
 		JFrame frame = new JFrame("Developer Tool");
 		frame.setSize(600, 400);
@@ -35,9 +35,11 @@ public class DevToolWindow {
 		JTabbedPane tabbedPane = new JTabbedPane();
 		JComponent envPanel = createEnvPanel();
 		JComponent bundlesPanel = createBundlesPanel();
+		JComponent logsPanel = createLogsPanel();
 
 		tabbedPane.add("Environment", envPanel);
 		tabbedPane.add("Bundles", bundlesPanel);
+		tabbedPane.add("Logs", logsPanel);
 		tabbedPane.setDoubleBuffered(true);
 
 		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
@@ -61,6 +63,15 @@ public class DevToolWindow {
 		return panel;
 	}
 
+	protected JComponent createLogsPanel() {
+		LogsPanel panel = new LogsPanel();
+		panel.init();
+		
+		context.getLogger().setLogEventListener(panel);
+		
+		return panel;
+	}
+	
 	public void runWindowApp() {
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
@@ -69,8 +80,7 @@ public class DevToolWindow {
 		});
 	}
 
-	public void setSysEnv(SysEnv sysEnv) {
-		this.sysEnv = sysEnv;
+	public void setContext(DevToolContext context) {
+		this.context = context;
 	}
-
 }

@@ -11,12 +11,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.liferay.devtool.DevToolContext;
+
 public class ConfigStorage {
 	private String name;
 	private String comment;
 	private Map<String, String> singleValues = new HashMap<>();
 	private Map<String, List<String>> listValues = new HashMap<>();
 	private boolean xml = false;
+	private DevToolContext context;
 
 	public ConfigStorage() {
 		super();
@@ -56,6 +59,10 @@ public class ConfigStorage {
 		singleValues.put(key, value);
 	}
 
+	public void setContext(DevToolContext context) {
+		this.context = context;
+	}
+
 	public void addToList(String key, String value) {
 		if (!listValues.containsKey(key)) {
 			listValues.put(key, new ArrayList<String>());
@@ -71,7 +78,7 @@ public class ConfigStorage {
 	        saveProperties(props);
 	        
 	        File f = new File(getFileName());
-	        System.out.println("saving \""+f.getAbsolutePath()+"\"");
+        	context.getLogger().log("saving \""+f.getAbsolutePath()+"\"");
 	        OutputStream out = new FileOutputStream(f);
 	        if (xml) {
 	        	props.storeToXML(out, comment);
@@ -79,7 +86,7 @@ public class ConfigStorage {
 	        	props.store(out, comment);
 	        }
 	    } catch (Exception e ) {
-	        e.printStackTrace();
+	    	context.getLogger().log(e);
 	    }
 	}
 
@@ -104,10 +111,10 @@ public class ConfigStorage {
 	 
 	    try {
 	        File f = new File(getFileName());
-	        System.out.println("reading from \""+f.getAbsolutePath()+"\"");
+	        context.getLogger().log("reading from \""+f.getAbsolutePath()+"\"");
 	        is = new FileInputStream(f);
 	    } catch ( Exception e ) {
-	    	e.printStackTrace();
+	    	context.getLogger().log(e);
 	    	is = null;
 	    }
 	 
@@ -125,7 +132,7 @@ public class ConfigStorage {
 	        loadFromProperties(props);
 	        exists = true;
 	    } catch ( Exception e ) {
-	    	e.printStackTrace();
+	    	context.getLogger().log(e);
 	    }
 	    
 	    return exists;

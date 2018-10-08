@@ -34,8 +34,6 @@ import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
 import com.liferay.devtool.bundles.BundleManager;
 import com.liferay.devtool.bundles.BundleStatus;
-import com.liferay.devtool.bundles.GitRepoEntry;
-import com.liferay.devtool.bundles.TempDirEntry;
 import com.liferay.devtool.utils.HtmlDescriptionRenderer;
 import com.liferay.devtool.utils.StringUtils;
 
