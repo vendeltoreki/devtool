@@ -1,6 +1,7 @@
 package com.liferay.devtool.process;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ProcessEntry {
@@ -11,6 +12,8 @@ public class ProcessEntry {
 	private String windowTitle;
 	private String execName;
 	private List<String> listeningPorts;
+	private String timezone;
+	private Date processStartTime;
 	
 	public String getPid() {
 		return pid;
@@ -76,6 +79,22 @@ public class ProcessEntry {
 		if (!listeningPorts.contains(port)) {
 			listeningPorts.add(port);
 		}
+	}
+
+	public String getTimezone() {
+		return timezone;
+	}
+
+	public void setTimezone(String timezone) {
+		this.timezone = timezone;
+	}
+
+	public Date getProcessStartTime() {
+		return processStartTime;
+	}
+
+	public void setProcessStartTime(Date processStartTime) {
+		this.processStartTime = processStartTime;
 	}
 
 	@Override

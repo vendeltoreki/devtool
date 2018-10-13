@@ -2,23 +2,18 @@ package com.liferay.devtool.bundles;
 
 import java.util.List;
 
-import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundlemonitor.BundleMonitor;
+import com.liferay.devtool.bundles.model.BundleModel;
 import com.liferay.devtool.bundles.reader.BundleDetailsReader;
 import com.liferay.devtool.bundles.reader.BundleJarReader;
 import com.liferay.devtool.bundles.reader.DbSchemaReader;
 import com.liferay.devtool.bundles.reader.PatchingToolReader;
+import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.process.BundleRunner;
-import com.liferay.devtool.process.WindowsProcessTool;
-import com.liferay.devtool.utils.ConfigStorage;
 import com.liferay.devtool.utils.DbUtil;
 import com.liferay.devtool.utils.TempDirUtil;
 
 public class BundleManager implements FileSystemScanEventListener {
-	private static final String PROPS_NAME = "bundle_paths";
-	private static final String PROPS_BUNDLE = "bundle.root.dir";
-	private static final String PROPS_GIT = "git.root.dir";
-
 	private DevToolContext context;
 	private BundleEventListener bundleEventListener;
 	private BundleMonitor bundleMonitor = new BundleMonitor();
@@ -37,14 +32,13 @@ public class BundleManager implements FileSystemScanEventListener {
 	public void readDetails() {
 		context.getLogger().log("Reading bundle details");
 		
-		bundleMonitor.start();
-		
 		if (bundleModel.isEmpty()) {
 			tryLoadFromConfig();
 		}
 		
 		if (context.getSysEnv().isWindows()) {
-			queryProcessEntries();
+			bundleMonitor.start();
+			//queryProcessEntries();
 		}
 		readBundleDetails();
 		readBundleVersions();
@@ -54,49 +48,21 @@ public class BundleManager implements FileSystemScanEventListener {
 	}
 
 	private void saveConfig() {
-		ConfigStorage configStorage = new ConfigStorage();
-		configStorage.setContext(context);
-		configStorage.setName(PROPS_NAME);
-		configStorage.setComment("Temporary storage for detected bundle paths");
-		
-		for (BundleEntry bundleEntry : bundleModel.getBundles()) {
-			configStorage.addToList(PROPS_BUNDLE, bundleEntry.getRootDirPath());
-		}
-
-		for (GitRepoEntry gitRepoEntry : bundleModel.getGitRepos()) {
-			configStorage.addToList(PROPS_GIT, gitRepoEntry.getRootDir().getAbsolutePath());
-		}
-		
-		configStorage.save();
+		BundlePathConfig bundlePathConfig = new BundlePathConfig();
+		bundlePathConfig.saveConfig(bundleModel);
 	}
 
 	private void tryLoadFromConfig() {
-		try {
-			ConfigStorage configStorage = new ConfigStorage();
-			configStorage.setContext(context);
-			configStorage.setName(PROPS_NAME);
-			configStorage.load();
+		BundlePathConfig bundlePathConfig = new BundlePathConfig();
+		bundlePathConfig.tryLoadFromConfig();
 			
-			List<String> bundlePaths = configStorage.getList(PROPS_BUNDLE);
-			for (String path : bundlePaths) {
-				onFoundBundle(path);
-			}
-			
-			List<String> gitPaths = configStorage.getList(PROPS_GIT);
-			for (String path : gitPaths) {
-				onFoundGitRepo(path);
-			}
-		} catch (Exception e) {
-			context.getLogger().log(e);
+		for (String path : bundlePathConfig.getBundlePaths()) {
+			onFoundBundle(path);
 		}
-	}
-
-	private void queryProcessEntries() {
-		WindowsProcessTool wp = new WindowsProcessTool();
-		wp.setSysEnv(context.getSysEnv());
-		wp.refresh();
-
-		bundleModel.updateWithProcessEntries(wp.getProcessEntries());
+		
+		for (String path : bundlePathConfig.getGitPaths()) {
+			onFoundGitRepo(path);
+		}
 	}
 
 	private void readBundleDbs() {
@@ -221,6 +187,22 @@ public class BundleManager implements FileSystemScanEventListener {
 			
 			sendUpdate(bundleEntry);
 		}
+	}
+
+	public void startAndWaitBundle(BundleEntry bundleEntry) {
+		
+	}
+	
+	public void stopAndWaitBundle(BundleEntry bundleEntry) {
+	}
+
+	public void restartBundle(BundleEntry bundleEntry) {
+		stopAndWaitBundle(bundleEntry);
+		startAndWaitBundle(bundleEntry);
+	}
+	
+	public void stop() {
+		bundleMonitor.stop();
 	}
 	
 	public boolean isBundleStartable(BundleEntry bundleEntry) {

@@ -5,6 +5,7 @@ import static com.liferay.devtool.utils.StringUtils.notEmpty;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,14 @@ public class WindowsProcessTool {
 				
 				if (entry.getBundlePath() != null) {
 					System.out.println("\tBUNDLE: "+entry.getBundlePath());
+				}
+
+				if (entry.getTimezone() != null) {
+					System.out.println("\tTimeZone: "+entry.getTimezone());
+				}
+				
+				if (entry.getProcessStartTime() != null) {
+					System.out.println("\tStartTime: "+entry.getProcessStartTime());
 				}
 
 				if (entry.getListeningPorts() != null && !entry.getListeningPorts().isEmpty()) {
@@ -119,12 +128,26 @@ public class WindowsProcessTool {
 					if (notEmpty(bundlePath)) {
 						processEntry.setBundlePath(bundlePath);
 					}
+					
+					String timezone = StringUtils.extractTimezoneFromCommand(command);
+					if (notEmpty(timezone)) {
+						processEntry.setTimezone(timezone);
+					}
 				}
 				
 				String desc = record.get("Description");
 				if (notEmpty(desc)) {
 					processEntry.setExecName(desc);
 				}
+				
+				String creationDate = record.get("CreationDate");
+				if (notEmpty(creationDate)) {
+					Date parsedCreationDate = StringUtils.parseWmicTimestamp(creationDate);
+					if (parsedCreationDate != null) {
+						processEntry.setProcessStartTime(parsedCreationDate);
+					}
+				}
+				
 			}
 		}
 	}
@@ -184,7 +207,8 @@ public class WindowsProcessTool {
 		SimpleCommand comm = new SimpleCommand();
 		comm.setSysEnv(sysEnv);
 
-		String command = "cmd.exe /c " + "wmic process list /FORMAT:CSV";
+		//String command = "cmd.exe /c " + "wmic process list /FORMAT:CSV";
+		String command = "cmd.exe /c " + "wmic process get ProcessId, ParentProcessId, Description, CreationDate, CommandLine /FORMAT:CSV";
 		comm.run(command);
 		wmicOutput = processWmicOutput(comm.getStdOut());
 	}

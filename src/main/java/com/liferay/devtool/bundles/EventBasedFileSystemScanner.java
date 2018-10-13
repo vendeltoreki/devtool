@@ -9,7 +9,7 @@ import java.util.Set;
 
 import javax.swing.filechooser.FileSystemView;
 
-import com.liferay.devtool.DevToolContext;
+import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.utils.ConfigStorage;
 import com.liferay.devtool.utils.StringUtils;
 

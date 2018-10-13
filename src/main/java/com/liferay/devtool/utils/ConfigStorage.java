@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.liferay.devtool.DevToolContext;
+import com.liferay.devtool.context.DevToolContext;
 
 public class ConfigStorage {
 	private String name;

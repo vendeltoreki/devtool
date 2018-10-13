@@ -1,7 +1,10 @@
 package com.liferay.devtool.utils;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -162,15 +165,34 @@ public class StringUtils {
 		return res;
 	}
 
+	public static String extractTimezoneFromCommand(String command) {
+		return extractParameterFromJavaCommandNoQuotes(command, "user.timezone");
+	}
+	
 	private static String extractParameterFromJavaCommand(String command, String paramName) {
 		// TODO escape paramName
-		Pattern pattern = Pattern.compile("-D"+paramName+"=\\\"(.*?)\\\"");
+		Pattern pattern = Pattern.compile("-D"+escapeRegexp(paramName)+"=\\\"(.*?)\\\"");
 		Matcher matcher = pattern.matcher(command);
 		if (matcher.find()) {
 		    return matcher.group(1);
 		}
 
 		return null;
+	}
+
+	private static String extractParameterFromJavaCommandNoQuotes(String command, String paramName) {
+		// TODO escape paramName
+		Pattern pattern = Pattern.compile("-D"+escapeRegexp(paramName)+"=(.*?) ");
+		Matcher matcher = pattern.matcher(command);
+		if (matcher.find()) {
+		    return matcher.group(1);
+		}
+
+		return null;
+	}
+	
+	public static String escapeRegexp(String pattern) {
+		return pattern.replaceAll("\\.", "\\\\.");
 	}
 
 	public static boolean containsAny(String text, String[] keywords) {
@@ -228,5 +250,65 @@ public class StringUtils {
 		} else {
 			return text.substring(0, maxLength) + "..";
 		}
+	}
+
+	public static Date parseTimestamp(String tsString) {
+		Date res = null;
+		try {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
+			res = sdf.parse(tsString);
+		} catch (ParseException e) { /* ignore */ }
+		return res;
+	}
+
+	public static String formatTimestamp(Date tsDate) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z");
+		return sdf.format(tsDate);
+	}
+	
+	public static Date parseWmicTimestamp(String tsString) {
+		String tsPart = null;
+		String tzPart = null;
+		if (tsString.contains("+")) {
+			int p = tsString.lastIndexOf("+");
+			tsPart = tsString.substring(0,p);
+			tzPart = tsString.substring(p);
+		} else if (tsString.contains("-")) {
+			int p = tsString.lastIndexOf("-");
+			tsPart = tsString.substring(0,p);
+			tzPart = tsString.substring(p);
+		} else {
+			return null;
+		}
+		
+		if (tsPart != null && tzPart != null && tzPart.matches("[\\+\\-][0-9]{3}")) {
+			String sign = tzPart.substring(0,1);
+			String value = tzPart.substring(1);
+			int tzMinutes = tryParseInt(value);
+			int tzHours = tzMinutes / 60;
+			tzMinutes = tzMinutes % 60;
+			
+			tzPart = sign + String.format("%02d%02d", tzHours, tzMinutes);
+			
+			if (tsPart.length() > 18) {
+				tsPart = tsPart.substring(0,18);
+			}
+		}
+		
+		Date res = null;
+		try {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss.SSS Z");
+			res = sdf.parse(tsPart + " " + tzPart);
+		} catch (ParseException e) { /* ignore */ }
+		return res;
+	}
+
+	public static Date parseLogTimestamp(String tsString) {
+		Date res = null;
+		try {
+			SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss.SSS Z");
+			res = sdf.parse(tsString);
+		} catch (ParseException e) { /* ignore */ }
+		return res;
 	}
 }

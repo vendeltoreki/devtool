@@ -7,8 +7,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 
-import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.devenv.DevEnvChecker;
 
 public class DevToolWindow {
@@ -26,6 +26,14 @@ public class DevToolWindow {
 		JFrame frame = new JFrame("Developer Tool");
 		frame.setSize(600, 400);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.addWindowListener(new java.awt.event.WindowAdapter() {
+		    @Override
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		    	if (bundleManager != null) {
+		    		bundleManager.stop();
+		    	}
+		    }
+		});		
 		frame.setIconImage(Icons.IMG_APP);
 
 		statusLabel = new JLabel("Ready");

@@ -156,4 +156,42 @@ public class StringUtilsUnitTest {
 				equalTo("c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32"));
 	}
 		
+	@Test
+	public void test_escapeRegexp() throws Exception {
+		assertThat(StringUtils.escapeRegexp("user.timezone"),
+				equalTo("user\\.timezone"));
+	}
+
+	@Test
+	public void test_extractTimezoneFromCommand() throws Exception {
+		String command = "\"C:\\dev\\jdk1.8.0_151\\bin\\java.exe\"   -Djava.util.logging.config.file=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\conf\\logging.properties\" -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n  -Dfile.encoding=UTF8 -Djava.net.preferIPv4Stack=true  -Dorg.apache.catalina.loader.WebappClassLoader.ENABLE_CLEAR_REFERENCES=false -Duser.timezone=GMT -Xmx4000m -XX:MaxPermSize=512m  -Djava.endorsed.dirs=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\endorsed\" -classpath \"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\bin\\bootstrap.jar;c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\bin\\tomcat-juli.jar\" -Dcatalina.base=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\" -Dcatalina.home=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\" -Djava.io.tmpdir=\"c:\\liferay\\bundles\\liferay-dxp-digital-enterprise-7.0-sp6-grow\\tomcat-8.0.32\\temp\" org.apache.catalina.startup.Bootstrap  start";
+		assertThat(StringUtils.extractTimezoneFromCommand(command),
+				equalTo("GMT"));
+	}
+
+	@Test
+	public void test_parseWmicTimestamp() throws Exception {
+		assertThat(StringUtils.parseWmicTimestamp("20181013113636.599094+120"),
+				equalTo(StringUtils.parseTimestamp("2018-10-13 11:36:36.599 +0200")));
+
+		assertThat(StringUtils.parseWmicTimestamp("20181013113636.599094-150"),
+				equalTo(StringUtils.parseTimestamp("2018-10-13 11:36:36.599 -0230")));
+
+		assertThat(StringUtils.parseWmicTimestamp("20181013113636.123+120"),
+				equalTo(StringUtils.parseTimestamp("2018-10-13 11:36:36.123 +0200")));
+
+		assertThat(StringUtils.parseWmicTimestamp("20181013113636.123456789+120"),
+				equalTo(StringUtils.parseTimestamp("2018-10-13 11:36:36.123 +0200")));
+	}
+	
+	@Test
+	public void test_parseLogTimestamp() throws Exception {
+		assertThat(StringUtils.parseLogTimestamp("19-Feb-2018 12:22:15.570 GMT"),
+				equalTo(StringUtils.parseTimestamp("2018-02-19 12:22:15.570 +0000")));
+		
+		assertThat(StringUtils.parseLogTimestamp("05-Feb-2018 12:22:15.570 GMT"),
+				equalTo(StringUtils.parseTimestamp("2018-02-05 12:22:15.570 +0000")));
+
+	}	
+	
 }

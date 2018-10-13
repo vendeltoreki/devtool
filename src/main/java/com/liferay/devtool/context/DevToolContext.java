@@ -1,9 +1,10 @@
-package com.liferay.devtool;
+package com.liferay.devtool.context;
 
 import com.liferay.devtool.eventlog.EventLogger;
 import com.liferay.devtool.utils.SysEnv;
 
 public class DevToolContext {
+	private static volatile DevToolContext defaultContext;
 	private SysEnv sysEnv;
 	private EventLogger logger;
 	
@@ -23,10 +24,12 @@ public class DevToolContext {
 		this.logger = logger;
 	}
 
-	public static DevToolContext getDefault() {
-		DevToolContext context = new DevToolContext();
-		context.setSysEnv(new SysEnv());
-		context.setLogger(new EventLogger());
-		return context;
+	public static synchronized DevToolContext getDefault() {
+		if (defaultContext == null) {
+			defaultContext = new DevToolContext();
+			defaultContext.setSysEnv(new SysEnv());
+			defaultContext.setLogger(new EventLogger());
+		}
+		return defaultContext;
 	}
 }

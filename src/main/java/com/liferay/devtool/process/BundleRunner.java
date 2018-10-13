@@ -3,8 +3,8 @@ package com.liferay.devtool.process;
 import java.io.File;
 import java.io.IOException;
 
-import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundles.BundleEntry;
+import com.liferay.devtool.context.DevToolContext;
 
 public class BundleRunner {
 	private DevToolContext context;

@@ -1,4 +1,4 @@
-package com.liferay.devtool.bundles;
+package com.liferay.devtool.bundles.model;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -6,7 +6,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.liferay.devtool.DevToolContext;
+import com.liferay.devtool.bundles.BundleEntry;
+import com.liferay.devtool.bundles.BundleStatus;
+import com.liferay.devtool.bundles.GitRepoEntry;
+import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.process.ProcessEntry;
 
 public class BundleModel {

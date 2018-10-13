@@ -1,6 +1,7 @@
 package com.liferay.devtool;
 
 import com.liferay.devtool.cli.DevToolCli;
+import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.window.DevToolWindow;
 
 public class DevToolMain {

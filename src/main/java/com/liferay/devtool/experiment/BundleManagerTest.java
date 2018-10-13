@@ -1,9 +1,9 @@
 package com.liferay.devtool.experiment;
 
-import com.liferay.devtool.DevToolContext;
 import com.liferay.devtool.bundles.BundleEntry;
 import com.liferay.devtool.bundles.BundleEventListener;
 import com.liferay.devtool.bundles.BundleManager;
+import com.liferay.devtool.context.DevToolContext;
 
 public class BundleManagerTest {
 
