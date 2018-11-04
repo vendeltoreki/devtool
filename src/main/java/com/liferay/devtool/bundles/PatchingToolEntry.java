@@ -7,6 +7,13 @@ public class PatchingToolEntry {
 	private boolean internal;
 	private String sourcePath;
 	
+	public PatchingToolEntry() {
+	}
+	
+	public PatchingToolEntry(PatchingToolEntry patchingToolEntry) {
+		// TODO Auto-generated constructor stub
+	}
+
 	public String getRootDirPath() {
 		return rootDirPath;
 	}

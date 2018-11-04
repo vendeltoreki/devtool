@@ -3,6 +3,8 @@ package com.liferay.devtool.bundles;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.liferay.devtool.bundles.model.CloneUtil;
+
 public class DbSchemaEntry {
 	private String schemaName;
 	private int tableCount;
@@ -10,6 +12,17 @@ public class DbSchemaEntry {
 	private Set<String> deployedApps = new HashSet<>();
 	private Double sizeInMb;
 	
+	public DbSchemaEntry() {
+	}
+	
+	public DbSchemaEntry(DbSchemaEntry original) {
+		this.schemaName = original.schemaName;
+		this.tableCount = original.tableCount;
+		this.schemaVersion = original.schemaVersion;
+		this.deployedApps = CloneUtil.cloneStringSet(original.deployedApps);
+		this.sizeInMb = original.sizeInMb;
+	}
+
 	public String getSchemaName() {
 		return schemaName;
 	}

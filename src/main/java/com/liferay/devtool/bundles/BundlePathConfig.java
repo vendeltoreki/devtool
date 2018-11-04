@@ -3,21 +3,21 @@ package com.liferay.devtool.bundles;
 import java.util.List;
 
 import com.liferay.devtool.bundles.model.BundleModel;
+import com.liferay.devtool.context.ContextBase;
 import com.liferay.devtool.context.DevToolContext;
 import com.liferay.devtool.utils.ConfigStorage;
 
-public class BundlePathConfig {
+public class BundlePathConfig extends ContextBase {
 	private static final String PROPS_NAME = "bundle_paths";
 	private static final String PROPS_BUNDLE = "bundle.root.dir";
 	private static final String PROPS_GIT = "git.root.dir";
 
-	private DevToolContext context;
 	private List<String> bundlePaths;
 	private List<String> gitPaths;
 
 	public void saveConfig(BundleModel bundleModel) {
 		ConfigStorage configStorage = new ConfigStorage();
-		configStorage.setContext(context);
+		configStorage.setContext(getContext());
 		configStorage.setName(PROPS_NAME);
 		configStorage.setComment("Temporary storage for detected bundle paths");
 		
@@ -35,14 +35,14 @@ public class BundlePathConfig {
 	public void tryLoadFromConfig() {
 		try {
 			ConfigStorage configStorage = new ConfigStorage();
-			configStorage.setContext(context);
+			configStorage.setContext(getContext());
 			configStorage.setName(PROPS_NAME);
 			configStorage.load();
 			
 			bundlePaths = configStorage.getList(PROPS_BUNDLE);
 			gitPaths = configStorage.getList(PROPS_GIT);
 		} catch (Exception e) {
-			context.getLogger().log(e);
+			getContext().getLogger().log(e);
 		}
 	}
 

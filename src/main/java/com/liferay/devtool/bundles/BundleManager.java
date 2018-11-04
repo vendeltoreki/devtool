@@ -37,8 +37,10 @@ public class BundleManager implements FileSystemScanEventListener {
 		}
 		
 		if (context.getSysEnv().isWindows()) {
-			bundleMonitor.start();
-			//queryProcessEntries();
+			if (!bundleMonitor.isStarted()) {
+				bundleMonitor.setBundleModel(bundleModel);
+				bundleMonitor.start();
+			}
 		}
 		readBundleDetails();
 		readBundleVersions();
@@ -55,7 +57,7 @@ public class BundleManager implements FileSystemScanEventListener {
 	private void tryLoadFromConfig() {
 		BundlePathConfig bundlePathConfig = new BundlePathConfig();
 		bundlePathConfig.tryLoadFromConfig();
-			
+
 		for (String path : bundlePathConfig.getBundlePaths()) {
 			onFoundBundle(path);
 		}
@@ -119,6 +121,7 @@ public class BundleManager implements FileSystemScanEventListener {
 			bundleDetailsReader.setBundleEntry(bundle);
 			bundleDetailsReader.readDetails();
 			
+			bundleModel.updateBundleDetails(bundle);
 			sendUpdate(bundle);
 		}
 	}

@@ -20,9 +20,11 @@ public class EventLogger {
 		logEntry.setException(exception);
 		logEntry.setThread(Thread.currentThread().getName());
 		
+		System.out.println("LOG:"+logEntry);
+		
 		if (logEventListener != null) {
 			logEventListener.onLogEventReceived(logEntry);
-		}		
+		}
 	}
 
 	public LogEventListener getLogEventListener() {

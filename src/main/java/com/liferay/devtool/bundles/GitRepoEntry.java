@@ -10,6 +10,13 @@ public class GitRepoEntry {
 	private String currentBranch;
 	private String buildTargetDir;
 
+	public GitRepoEntry() {
+	}
+	
+	public GitRepoEntry(GitRepoEntry repo) {
+		// TODO Auto-generated constructor stub
+	}
+
 	public File getRootDir() {
 		return rootDir;
 	}

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.liferay.devtool.bundles.model.CloneUtil;
 import com.liferay.devtool.process.ProcessEntry;
 
 public class BundleEntry {
@@ -37,6 +38,36 @@ public class BundleEntry {
 	private boolean deleted = false;
 	private BundleStatus bundleStatus = BundleStatus.UNKNOWN;
 
+	public BundleEntry() {
+		super();
+	}
+
+	public BundleEntry(BundleEntry original) {
+		this.rootDirPath = original.rootDirPath;
+		this.rootDir = original.rootDir;
+		this.webServerDir = original.webServerDir;
+		this.webServerType = original.webServerType;
+		this.multipleWebServers = original.multipleWebServers;
+		this.name = original.name;
+		this.tomcatVersion = original.tomcatVersion;
+		this.memoryXmx = original.memoryXmx;
+		this.memoryPermSize = original.memoryPermSize;
+		this.dbDriverClass = original.dbDriverClass;
+		this.dbUrl = original.dbUrl;
+		this.dbUsername = original.dbUsername;
+		this.dbPassword = original.dbPassword;
+		this.gitRepos = CloneUtil.cloneGitRepoList(original.gitRepos);
+		this.tempDirs = CloneUtil.cloneTempDirList(original.tempDirs);
+		this.portalVersion = original.portalVersion;
+		this.portalPatches = original.portalPatches;
+		this.dbSchemaEntry = new DbSchemaEntry(original.dbSchemaEntry);
+		this.runningProcess = new ProcessEntry(original.runningProcess);
+		this.patchingToolEntry = new PatchingToolEntry(original.patchingToolEntry);
+		this.configuredServerPorts = CloneUtil.cloneStringStringMap(configuredServerPorts);
+		this.deleted = original.deleted;
+		this.bundleStatus = original.bundleStatus;
+	}
+	
 	public String getRootDirPath() {
 		return rootDirPath;
 	}

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.liferay.devtool.bundles.model.CloneUtil;
+
 public class ProcessEntry {
 	private String pid;
 	private ProcessEntry parentProcess;
@@ -15,6 +17,21 @@ public class ProcessEntry {
 	private String timezone;
 	private Date processStartTime;
 	
+	public ProcessEntry() {
+	}
+	
+	public ProcessEntry(ProcessEntry original) {
+		this.pid = original.pid;
+		this.parentProcess = null;
+		this.commandLine = original.commandLine;
+		this.bundlePath = original.bundlePath;
+		this.windowTitle = original.windowTitle;
+		this.execName = original.execName;
+		this.listeningPorts = CloneUtil.cloneStringList(original.listeningPorts);
+		this.timezone = original.timezone;
+		this.processStartTime = original.processStartTime;
+	}
+
 	public String getPid() {
 		return pid;
 	}

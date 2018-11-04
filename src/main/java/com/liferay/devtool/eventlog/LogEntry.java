@@ -1,5 +1,7 @@
 package com.liferay.devtool.eventlog;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Date;
 
 public class LogEntry {
@@ -33,5 +35,15 @@ public class LogEntry {
 		this.exception = exception;
 	}
 	
-	
+	public String toString() {
+		if (exception != null) {
+			StringWriter writer = new StringWriter();
+			PrintWriter printWriter= new PrintWriter(writer);
+			exception.printStackTrace(printWriter);				
+			
+			return "["+time+"] ("+thread+") "+message+"\n"+writer.toString();
+		} else {
+			return "["+time+"] ("+thread+") "+message;
+		}
+	}
 }
