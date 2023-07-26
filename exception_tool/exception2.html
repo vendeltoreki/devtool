@@ -1,0 +1,768 @@
+<!-- TODO: Tunnel 
+server side:
+[TunnelServlet:108] java.lang.reflect.InvocationTargetException
+at com.liferay.portal.servlet.TunnelServlet.doPost(TunnelServlet.java:104)
+
+client side:
+2021-10-26 13:09:28.438 ERROR [default task-4][StagingBarPortlet:326] com.liferay.portal.kernel.exception.PortalException: Invocation failed due to com.liferay.portal.kernel.exception.NoSuchGroupException
+com.liferay.portal.kernel.exception.PortalException: Invocation failed due to com.liferay.portal.kernel.exception.NoSuchGroupException
+	at com.liferay.portal.servlet.TunnelServlet.doPost(TunnelServlet.java:117)
+
+
+-->
+<html>
+<head>
+<title>Exception</title>
+
+<style>
+#target {
+    font-family: monospace;
+}
+
+pre {
+	tab-size: 4;
+	
+	overflow-x: auto;
+	white-space: pre-wrap;
+	white-space: -moz-pre-wrap;
+	white-space: -pre-wrap;
+	white-space: -o-pre-wrap;
+	word-wrap: break-word;	
+}
+
+pre a {
+	color: #aaaaaa;
+}
+
+body {
+	background-color: #151111;
+	color: #aaaaaa;
+}
+
+select {
+	background-color: #151111;
+	color: #aaaaaa;
+}
+
+.fixpack {
+	width: 500px;
+}
+
+.kwd {
+	color: #8888cc;
+}
+
+.lsi {
+	color: #ffffff;
+}
+
+.lsu {
+	color: #ffffff;
+}
+
+.ssi {
+	color: #ddffdd;
+}
+
+.ssu {
+	color: #ddffdd;
+}
+
+.ppi {
+	color: #ddffdd;
+}
+
+.pxm {
+	color: #ffffff;
+}
+
+.pxc {
+	color: #448844;
+}
+
+.mli {
+	color: #00ddbb;
+}
+
+.mva {
+	color: #ddddff;
+}
+
+.dcx {
+	color: #ddaaff;
+}
+
+.tst {
+	color: #ff4499;
+}
+
+.upg {
+	color: #44ff99;
+}
+
+.tun {
+	color: #ffdd00;
+}
+
+.smdh {
+	color: #ddddff;
+}
+
+.smr {
+	color: #ddddff;
+}
+
+.tpl {
+	color: #afafaf;
+}
+
+.bgt {
+	color: #994499;
+}
+
+.dbindex {
+	color: #11ff11;
+}
+
+.hideLine {
+	color: #666666;
+}
+
+.customLine {
+	color: #aaaaaa;
+	background-color: #113311;
+	border: 1px solid #118811;
+}
+
+.logLine {
+	background-color: #353131;
+}
+
+.causedByLine {
+	background-color: #353131;
+}
+
+.causedBy {
+	color: #ffffff;
+}
+
+.fatal {
+	color: #aa1111;
+}
+
+.severe {
+	color: #aa1111;
+}
+
+.error {
+	color: #ff1111;
+}
+
+.warn {
+	color: #ffff11;
+}
+
+.info {
+	color: #11ffff;
+}
+
+.debug {
+	color: #5555ff;
+}
+
+.trace {
+	color: #5555ff;
+}
+
+.exceptionName {
+	color: #ff1111;
+}
+
+.fileLink {
+	color: #aaaaee;
+}
+
+.logSummary {
+	border: 1px solid #dddddd;
+}
+
+.logSummary pre {
+	margin: 0px 0px 0px 0px;
+}
+
+.infoHL {
+	color: #ffffff;
+}
+
+</style>
+
+</head>
+<body>
+
+
+<pre>&lt;&lt;&lt;Paste exception here&gt;&gt;&gt;</pre>
+
+<div id="infoLines" class="formatarea logSummary" style="display: none;"></div>
+
+<div id="logLines" class="formatarea logSummary" style="display: none;"></div>
+
+<div id="target" class="formatarea"></div>
+
+
+<script>
+    document.addEventListener('paste', function(e) {
+        e.preventDefault();
+
+        var pastedText = ''
+
+        if (window.clipboardData && window.clipboardData.getData) { // IE
+
+            pastedText = window.clipboardData.getData('Text');
+
+        } else if (e.clipboardData && e.clipboardData.getData) {
+
+            pastedText = e.clipboardData.getData('text/plain');
+
+        }
+
+		//alert('size='+pastedText.length);
+		
+		logLines = [];
+		logLinesTimeDiff = [];
+		infoLines = [];
+
+        document.getElementById('target').innerHTML = processText(pastedText);
+
+		if (logLines.length > 1) {
+			var logLinesDiv = document.getElementById('logLines');
+			logLinesDiv.style.display = "block";
+			
+			if (logLines.length > 2) {
+				logLinesDiv.innerHTML = '<pre>'+getLogLinesContent()+'</pre>';
+			} else {
+				logLinesDiv.innerHTML = '<pre>'+logLines.join('\n')+'</pre>';
+			}
+		}
+		
+		if (infoLines.length >= 1) {
+			var infoLinesDiv = document.getElementById('infoLines');
+			infoLinesDiv.style.display = "block";
+
+			var infoText = '';
+
+			if (info['isUpgrade']) {
+				infoText += 'Contains <span class="infoHL">Upgrade process</span>';
+			}
+		
+			infoLinesDiv.innerHTML = '<pre>'+infoText+'\n'+infoLines.join('\n')+'</pre>';
+		}
+    });
+
+	function getLogLinesContent() {
+		getLogLinesTimeDiff();
+
+		var maxDiffValue = 0;
+		for (var j = 0; j < logLinesTimeDiff.length; j++) {
+			if (logLinesTimeDiff[j] > maxDiffValue) {
+				maxDiffValue = logLinesTimeDiff[j];
+			}
+		}
+		
+		if (maxDiffValue <= 0) {
+			maxDiffValue = 1;
+		}
+
+		var res = '';
+		
+		res += ''+logLines.length+' log msgs\n';
+		
+		for (var j = 0; j < logLines.length; j++) {
+			res += logLines[j] + '&nbsp;<a href="#link'+(j+1)+'">&gt;&gt;</a>\n';
+			
+			if (j < logLinesTimeDiff.length) {
+				var widthVal = logLinesTimeDiff[j] * 99 / maxDiffValue;
+				
+				if (widthVal < 0) {
+					widthVal = 0;
+				}
+
+				if (widthVal > 99) {
+					widthVal = 99;
+				}
+				
+				//res += logLinesTimeDiff[j]+'\n';
+				if (widthVal > 0.1) {
+					res += '<div style="margin: 0px; padding: 0px; border-top: 1px solid #00ff00; width: '+widthVal+'%; height: 0px;"></div>';
+				}
+			}
+		}
+		
+		return res;
+	}
+	
+	function getLogLinesTimeDiff() {
+		/*for (var j = 0; j < logLines.length; j++) {
+			var currTime = parseTimeFromLogLine(logLines[j]);
+			logLinesTimeDiff.push(currTime);
+		}*/
+
+		var prevTime = parseTimeFromLogLine(logLines[0]);
+		for (var j = 1; j < logLines.length; j++) {
+			var currTime = parseTimeFromLogLine(logLines[j]);
+
+			if (prevTime > 0 && currTime > 0) {
+				var diff = currTime - prevTime;
+				
+				if (diff < 0) {
+					diff = 0;
+				}
+				
+				if (diff > 3600000) {
+					diff = 3600000;
+				}
+				
+				logLinesTimeDiff.push(diff);
+			}
+			prevTime = currTime;
+		}
+	}
+	
+	function parseTimeFromLogLine(logLine) {
+		var timeStr = logLine.replace(/(^.+)([0-9]{1,2}):([0-9]{2}):([0-9]{2})[\.\,]([0-9]{1,3})(.+$)/i, "$2|$3|$4|$5");
+		
+		var times = timeStr.split('|');
+		
+		if (times.length == 4) {
+			//alert("test: "+times);
+			return times[0]*60*60*1000 + times[1]*60*1000 + times[2]*1000 + times[3]*1;
+		}
+		
+		return 0;
+	}
+	
+	function processText(text) {
+		var lines = text.split('\n');
+
+		var res = '';
+		
+		for (var j = 0; j < lines.length; j++) {
+			res = res + highlightLine(lines[j]);
+		}	
+	
+		return '<pre>'+res+'</pre>';
+	}
+	
+	function highlightLine(line) {
+		if (line.endsWith('\r')) {
+			line = line.substring(0, line.length-1);
+		}
+	
+		parseLineForInfo(line);
+		
+		/*var currentLineType = 0;
+
+		if (isStackTraceLine(line)) {
+			currentLineType = 1;
+		} else if (isLogLine(line)) {
+			currentLineType = 3;
+		} else if (isCausedByLine(line)) {
+			currentLineType = 4;
+		} else if (isGroovyLine(line)) {
+			currentLineType = 5;
+		} else {
+			currentLineType = 6;
+		}*/
+
+		
+		if (isStackTraceLine(line)) {
+			return highlightStackTraceLine(line)+'\n';
+		} else if (isLogLine(line)) {
+			addLogLine(line);
+			return highlightLogLine(line);
+		} else if (isCausedByLine(line)) {
+			return highlightCausedByLine(line)+'\n';
+		} else if (isGroovyLine(line)) {
+			return highlightGroovyLine(line)+'\n';
+		} else {
+			return highlightNonStackTraceLine(line)+'\n';
+		}
+		
+		/*if (!isGroovyLine(line)) {
+			flushGroovy();
+		}*/
+	}
+	
+	function parseLineForInfo(line) {
+	
+		// Using dialect org.hibernate.dialect.Oracle10gDialect for Oracle 12.1
+		if (line.includes("org.hibernate.dialect")) {
+			if (line.match(/^.+org\.hibernate\.dialect\.[A-Za-z0-9_]{0,30}Dialect.*$/)) {
+				var dialect = line.replace(/(^.+org\.hibernate\.dialect\.)([A-Za-z0-9_]{0,30})(Dialect.*$)/i, "$2");
+				infoLines.push('DB Dialect: <span class="infoHL">'+dialect+"</span>");
+			}
+			
+			if (line.match(/^.+org\.hibernate\.dialect\.[A-Za-z0-9_]{0,30}Dialect for .+$/)) {
+				var dbType = line.replace(/(^.+org\.hibernate\.dialect\.[A-Za-z0-9_]{0,30}Dialect for )(.+$)/i, "$2");
+				infoLines.push('DB Type: <span class="infoHL">'+dbType+"</span>");
+			}
+		}
+
+
+		// Using dialect com.liferay.portal.dao.orm.hibernate.SQLServer2008Dialect for Microsoft SQL Server 13.0
+		if (line.includes("com.liferay.portal.dao.orm.hibernate")) {
+			if (line.match(/^.+Using dialect com\.liferay\.portal\.dao\.orm\.hibernate\.[A-Za-z0-9_]{0,30}Dialect.*$/)) {
+				var dialect = line.replace(/(^.+com\.liferay\.portal\.dao\.orm\.hibernate\.)([A-Za-z0-9_]{0,30})(Dialect.*$)/i, "$2");
+				var dbType = line.replace(/(^.+com\.liferay\.portal\.dao\.orm\.hibernate\.[A-Za-z0-9_]{0,30}Dialect for )(.+$)/i, "$2");
+				
+				infoLines.push('DB Dialect: <span class="infoHL">'+dialect+"</span>");
+				infoLines.push('DB Type: <span class="infoHL">'+dbType+"</span>");
+			}
+		}
+		
+		if (line.includes("[UpgradeProcess:")) {
+			if (!info['isUpgrade']) {
+				info['isUpgrade'] = 'yes';
+			}
+		}
+
+		// Starting Liferay DXP Digital Enterprise 7.0.10 GA1 (Wilberforce / Build 7010 / June 15, 2016)
+		if (line.startsWith("Starting Liferay ")) {
+			infoLines.push('Portal start: <span class="infoHL">'+line+"</span>");
+		}
+		
+	}
+	
+	function highlightStackTraceLine(line) {
+		var res = line;
+		
+		if (!res.startsWith("\tat ")) {
+			res = res.replace(/^\s*at\s/, "\tat ");
+		}
+		
+		if (res.includes('.groovy:')) {
+			// at Script1.run(Script1.groovy:14)
+			// at Script1.run(Script1.groovy:14)
+			var groovyFailLine = res.replace(/(^.*Script[0-9]{1,5}\.run\(Script[0-9]{1,5}\.groovy:)([0-9]{1,5})(\).*$)/g, "$2");
+			
+			alert('groovyFailLine: '+groovyFailLine);
+			
+			if (groovyFailLine) {
+				lastGroovyFailLine = parseInt(groovyFailLine);
+			}
+		}
+		
+		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"lsi\">$1LocalServiceImpl</span>.<span class=\"lsi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"lsu\">$1LocalServiceUtil</span>.<span class=\"lsu\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssu\">$1ServiceUtil</span>.<span class=\"ssu\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ServiceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssi\">$1ServiceImpl</span>.<span class=\"ssi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)PersistenceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ppi\">$1PersistenceImpl</span>.<span class=\"ppi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ModelListener\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mli\">$1ModelListener</span>.<span class=\"mli\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)MVCActionCommand\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mva\">$1MVCActionCommand</span>.<span class=\"mva\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)DisplayContext\.([A-Za-z0-9_]+)\(/g, ".<span class=\"dcx\">$1DisplayContext</span>.<span class=\"dcx\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
+		res = res.replace(/\.DBUpgraderLauncher\.main\(/g, ".<span class=\"upg\">DBUpgraderLauncher</span>.<span class=\"upg\">main</span>(");
+		res = res.replace(/\.TunnelServlet\./g, ".<span class=\"tun\">TunnelServlet</span>.");
+		res = res.replace(/\.TunnelUtil\./g, ".<span class=\"tun\">TunnelUtil</span>.");
+		res = res.replace(/com\.liferay\.portal\.kernel\.util\.MethodHandler/g, "com.liferay.portal.kernel.util.<span class=\"tun\">MethodHandler</span>");
+
+		res = res.replace(/com\.liferay/g, "<span class=\"kwd\">com.liferay</span>");
+		
+		if (!res.includes(".BaseStagedModelDataHandler")) {
+			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelDataHandler\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1StagedModelDataHandler</span>.$2(");
+		}
+		
+		if (!res.includes(".BaseStagedModelRepository")) {
+			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelRepository\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smr\">$1StagedModelRepository</span>.$2(");
+		}
+
+		if (res.includes("com.liferay")) {
+			res = res.replace(/\(([A-Za-z0-9_]+)\.java/g, "(<a href=\"https://github.com/liferay/liferay-portal/search?l=Java&q=filename%3A$1.java+$1\" class=\"fileLink\">$1.java</a>");
+
+			// https://github.com/liferay/liferay-portal/search?l=Java&q=filename%3ALayoutPageTemplateEntryLocalServiceImpl.java		
+		}
+
+		// at com.sun.proxy.$Proxy761.getArticleDisplay(Unknown Source)
+		if (res.includes('at com.sun.proxy.$Proxy')) {
+			res = res.replace(/(at com\.sun\.proxy\.)(\$Proxy[0-9]{1,5}\.)([a-zA-Z0-9_]{1,50})(\()/g, '$1<span class="pxc">$2</span><span class="pxm">$3</span>$4');
+			
+		}
+
+		if (res.includes(".LayoutImportController")) {
+			res = res.replace(/\.(LayoutImportController)\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1</span>.$2(");
+		}
+
+		if (res.includes(".LayoutExportController")) {
+			res = res.replace(/\.(LayoutExportController)\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1</span>.$2(");
+		}
+
+		if (res.includes(".PortletImportController")) {
+			res = res.replace(/\.(PortletImportController)\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1</span>.$2(");
+		}
+
+		if (res.includes(".PortletImportControllerImpl")) {
+			res = res.replace(/\.(PortletImportControllerImpl)\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1</span>.$2(");
+		}
+
+		if (res.includes(".PortletExportController")) {
+			res = res.replace(/\.(PortletExportController)\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1</span>.$2(");
+		}
+
+		if (res.includes("BackgroundTaskExecutor")) {
+			if (!res.includes(".SerialBackgroundTaskExecutor.") && !res.includes(".DelegatingBackgroundTaskExecutor.") && !res.includes(".ThreadLocalAwareBackgroundTaskExecutor.")) {
+				res = res.replace(/\.([A-Za-z0-9_]+)BackgroundTaskExecutor\.([A-Za-z0-9_]+)\(/g, ".<span class=\"bgt\">$1BackgroundTaskExecutor</span>.$2(");
+			}
+		}
+
+
+		res = highlightThirdPartyLib(res, "com.thoughtworks.xstream", "XML parser & writer library");
+
+		/*if (res.includes("_005f")) {
+			res = res.replace(/\.([A-Za-z0-9_]+)ServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssu\">$1ServiceUtil</span>.<span class=\"ssu\">$2</span>(");
+		}*/
+		
+		if (containsAny(res, hideExpr)) {
+			res = "<span class=\"hideLine\">"+res+"</span>";
+		}
+		
+		if (!containsAny(res, nonCustomLibraries)) {
+			//res = '<span class="customLine" title="Custom code">'+res+'</span>';
+			res = res.replace(/at ([a-z0-9]+\.[a-z0-9]+)\./g, 'at <span class="customLine" title="Custom code">$1</span>.');
+		}
+		
+		return res;
+	}
+
+	function highlightNonStackTraceLine(line) {
+		var res = line;
+
+		res = res.replace(/(IX_[A-F0-9]+)/g, "<a href=\"https://github.com/liferay/liferay-portal/search?l=SQL&q=$1\"><span class=\"dbindex\">$1</span></a>");
+		res = res.replace(/(Invocation failed due to)/g, "<span class=\"tun\" title=\"Remote tunneling call (client side)\">$1</span></a>");
+		res = res.replace(/\.([A-Za-z0-9_]+Exception)/g, ".<span class=\"exceptionName\">$1</span>");
+		res = res.replace(/\.([A-Za-z0-9_]+Error)/g, ".<span class=\"exceptionName\">$1</span>");
+		
+		return res;
+	}
+
+	function highlightThirdPartyLib(line, libKeyword, libDescription) {
+		var res = line;
+		
+		if (res.includes(libKeyword)) {
+			res = res.replace(libKeyword, "<span class=\"tpl\" title=\""+libKeyword+": "+libDescription+"\">"+libKeyword+"</span>");
+		}
+		
+		return res;
+	}
+
+	function highlightLogLine(line) {
+		var res = highlightLogLevel(line);
+		
+		res = highlightNonStackTraceLine(res);
+		
+		res = "<div class=\"logLine\"><a name=\"link"+logLines.length+"\"></a>"+res+"</div>";
+		return res;
+	}
+
+
+	function highlightLogLevel(line) {
+		var res = line;
+		
+		res = res.replace(/\sFATAL\s/, " <span class=\"fatal\">FATAL</span> ");
+		res = res.replace(/\sSEVERE\s/, " <span class=\"severe\">SEVERE</span> ");
+		res = res.replace(/\sERROR\s/, " <span class=\"error\">ERROR</span> ");
+		res = res.replace(/\sWARN\s/, " <span class=\"warn\">WARN</span> ");
+		res = res.replace(/\sINFO\s/, " <span class=\"info\">INFO</span> ");
+		res = res.replace(/\sDEBUG\s/, " <span class=\"debug\">DEBUG</span> ");
+		res = res.replace(/\sTRACE\s/, " <span class=\"trace\">TRACE</span> ");
+		
+		res = res.replace(/\[FATAL([ ]{0,3})\]/, "[<span class=\"fatal\">FATAL</span>$1]");
+		res = res.replace(/\[SEVERE([ ]{0,3})\]/, "[<span class=\"severe\">SEVERE</span>$1]");
+		res = res.replace(/\[ERROR([ ]{0,3})\]/, "[<span class=\"error\">ERROR</span>$1]");
+		res = res.replace(/\[WARN([ ]{0,3})\]/, "[<span class=\"warn\">WARN</span>$1]");
+		res = res.replace(/\[INFO([ ]{0,3})\]/, "[<span class=\"info\">INFO</span>$1]");
+		res = res.replace(/\[DEBUG([ ]{0,3})\]/, "[<span class=\"debug\">DEBUG</span>$1]");
+		res = res.replace(/\[TRACE([ ]{0,3})\]/, "[<span class=\"trace\">TRACE</span>$1]");
+
+		return res;
+	}
+
+	function highlightCausedByLine(line) {
+		var res = line;
+
+		res = res.replace(/^\s*Caused by:\s/, "<span class=\"causedBy\">Caused by:</span> ");
+		res = res.replace(/^\s*Suppressed:\s/, "<span class=\"causedBy\">Suppressed:</span> ");
+		
+		res = highlightNonStackTraceLine(res);
+		
+		//res = "<span class=\"causedByLine\">"+res+"</span>";
+		return res;
+	}
+
+	function highlightGroovyLine(line) {
+		var res = line;
+
+		var lineNum = parseInt(res.replace(/^(Line )([0-9]{1,5})(:.*)$/, "$2"));
+		
+		var groovyScriptLine = res.replace(/^(Line [0-9]{1,5}:)(.*)$/, "$2");
+		groovyLines.push(groovyScriptLine);
+		
+		if (lineNum == lastGroovyFailLine) {
+			res = res.replace(/^(Line [0-9]{1,5}:)(.*)$/, "<span class=\"error\">$1</span>$2");
+		} else {
+			res = res.replace(/^(Line [0-9]{1,5}:)(.*)$/, "<span class=\"causedBy\">$1</span>$2");
+		}
+		
+		return res;
+	}
+	
+	function isStackTraceLine(line) {
+		return line.match(/^\s*at\s/);
+	}
+	
+	function isLogLine(line) {
+		//return line.match(/\sERROR\s/) || line.match(/\sINFO\s/) || line.match(/\sWARN\s/) || line.match(/\sDEBUG\s/);
+
+		if (line.includes('FATAL') ||
+			line.includes('SEVERE') ||
+			line.includes('ERROR') ||
+			line.includes('INFO') ||
+			line.includes('WARN') ||
+			line.includes('DEBUG') ||
+			line.includes('TRACE')) {
+/*
+				line.match(/\sERROR\s/) ||
+				line.match(/\sINFO\s/) ||
+				line.match(/\sWARN\s/) ||
+				line.match(/\sDEBUG\s/) ||
+				line.match(/\sTRACE\s/) ||
+
+				line.match(/\[SEVERE\]/) ||
+				line.match(/\[ERROR\]/) ||
+				line.match(/\[INFO]\]/) ||
+				line.match(/\[WARN]\]/) ||
+				line.match(/\[DEBUG]\]/) ||
+				line.match(/\[TRACE]\]/)
+
+*/
+		
+			return (
+				line.match(/[\s\[]FATAL[\s\]]/) ||
+				line.match(/[\s\[]SEVERE[\s\]]/) ||
+				line.match(/[\s\[]ERROR[\s\]]/) ||
+				line.match(/[\s\[]INFO[\s\]]/) ||
+				line.match(/[\s\[]WARN[\s\]]/) ||
+				line.match(/[\s\[]DEBUG[\s\]]/) ||
+				line.match(/[\s\[]TRACE[\s\]]/)
+			);
+		} else {
+			return false;
+		}
+	}
+
+	function isCausedByLine(line) {
+		return line.match(/^\s*Caused by:\s/) || line.match(/^\s*Suppressed:\s/);;
+	}
+
+	function isGroovyLine(line) {
+		return line.match(/^Line [0-9]{1,5}:\s/);
+	}
+	
+	function flushGroovy() {
+		if (groovyLines.length > 0) {
+			groovyLines = [];
+		}
+		
+		lastGroovyFailLine = -1;
+	}
+	
+	function containsAny(line, keywords) {
+		for (var j = 0; j < keywords.length; j++) {
+			if (line.includes(keywords[j])) {
+				return true;
+			}
+		}
+
+		return false;		
+	}
+
+	function addLogLine(line) {
+		if (line.length > 120) {
+			line = line.substring(0,120);
+		}
+		
+		//line = line.replace(/([0-9]{1,2}):([0-9]{2}):([0-9]{2})\.([0-9]{1,3})/g,"$1|$2|$3|$4");
+		
+		logLines.push(highlightLogLevel(line));
+	}
+
+	
+var logLines = [];
+var logLinesTimeDiff = [];
+var infoLines = [];
+var info = {};
+var groovyLines = [];
+var lastGroovyFailLine = -1;
+
+var hideExpr = [
+"BaseFilter.doFilter",
+"BaseFilter.processFilter",
+"ApplicationFilterChain.doFilter",
+"InvokerFilterChain.processDoFilter",
+"InvokerFilterChain.doFilter",
+"sun.reflect.NativeMethodAccessorImpl.invoke0(",
+"sun.reflect.NativeMethodAccessorImpl.invoke(",
+"sun.reflect.DelegatingMethodAccessorImpl.invoke(",
+"sun.reflect.GeneratedMethodAccessor",
+"java.lang.reflect.Method.invoke("
+];
+
+
+var nonCustomLibraries = [
+">com.liferay<",
+" com.amazonaws.",
+" com.ctc.wstx.",
+" com.google.",
+" com.ibm.",
+" com.mchange.",
+" com.microsoft.",
+" com.mysql.",
+" com.sun.proxy.",
+" com.thoughtworks.",
+" com.valamis.",
+" com.zaxxer.",
+" de.schlichtherle.",
+" freemarker.",
+" io.netty.",
+" io.undertow.",
+" java.",
+" javax.",
+" jdk.",
+" net.java.",
+" oracle.",
+" org.apache.",
+" org.codehaus.",
+" org.eclipse.",
+" org.elasticsearch.",
+" org.hibernate.",
+" org.jboss.",
+" org.json.",
+" org.junit.",
+" org.kxml2.",
+" org.mariadb.",
+" org.opensaml.",
+" org.osgi.",
+" org.postgresql.",
+" org.quartz.",
+" org.springframework.",
+" org.tuckey.",
+" org.wildfly.",
+" org.xmlpull.",
+" org.xnio.",
+" sun.",
+"at Script1.run"
+];
+
+</script>
+
+
+</body>
+</html>
