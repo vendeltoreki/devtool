@@ -1,7 +1,11 @@
-/.gradle/
-/bin/
-/build/
-/artifacts/
+/mydevtool/.gradle/
+/mydevtool/bin/
+/mydevtool/build/
+/mydevtool/artifacts/
+/FixEnv/.gradle/
+/FixEnv/bin/
+/FixEnv/build/
+/FixEnv/artifacts/
 
 /resources/icons/Thumbs.db
 .DS_Store
