@@ -356,6 +356,10 @@ select {
 		if (line.endsWith('\r')) {
 			line = line.substring(0, line.length-1);
 		}
+
+		if (line.startsWith('[beanshell] ')) {
+			line = line.substring(12);
+		}
 	
 		parseLineForInfo(line);
 		
