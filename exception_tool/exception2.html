@@ -52,6 +52,14 @@ select {
 	color: #8888cc;
 }
 
+.sql {
+	color: #44bb44;
+}
+
+.hib {
+	color: #88cc88;
+}
+
 .lsi {
 	color: #ffffff;
 }
@@ -62,6 +70,10 @@ select {
 
 .ssi {
 	color: #ddffdd;
+}
+
+.rri {
+	color: #eeffaa;
 }
 
 .ssu {
@@ -275,9 +287,52 @@ select {
 		var res = '';
 		
 		res += ''+logLines.length+' log msgs\n';
-		
+
+		// Collect thread names for highlight
+		var threadNames = new Set();
+
 		for (var j = 0; j < logLines.length; j++) {
-			res += logLines[j] + '&nbsp;<a href="#link'+(j+1)+'">&gt;&gt;</a>\n';
+			if (logLines[j].match(/\[([0-9a-zA-Z_\-\/]{4,30})\]/)) {
+				var threadName=logLines[j].replace(/(^.+)\[([0-9a-zA-Z_\-\/]{4,30})\](.+$)/i,"$2");
+				threadNames.add(threadName);
+			}
+		}
+
+		var presetColors = ['eeaa88','88ccff','aa88dd','cccc77','aaeedd','aa9966','aaee88','66bbaa','ffbbdd','ff8899','9977aa','6666dd','778866','eeeeaa','6699ff'];
+
+		/*for (var j = 0; j < presetColors.length; j++) {
+			res += '<span style="color: '+presetColors[j]+'">'+presetColors[j]+'</span>\n';
+		}*/
+
+		var colorConst = ['66','77','88','99','aa','bb','cc','dd','ee','ff'];
+		var threadColors = new Map();
+
+		var threadNamesArray = [...threadNames];
+		for (var j = 0; j < threadNamesArray.length; j++) {
+			var col = 'ffffff';
+
+			if (j<presetColors.length) {
+				col = presetColors[j];
+			} else {
+				var r = Math.floor(Math.random()*colorConst.length);
+				var g = Math.floor(Math.random()*colorConst.length);
+				var b = Math.floor(Math.random()*colorConst.length);
+				col = colorConst[r]+colorConst[g]+colorConst[b];
+			}
+
+			threadColors.set(threadNamesArray[j], col);
+			//res += 'U=<span style="color: '+col+'">'+threadNamesArray[j]+', col='+col+'</span>\n';
+		}
+
+		for (var j = 0; j < logLines.length; j++) {
+			var logLine = logLines[j];
+			
+			if (logLines[j].match(/\[([0-9a-zA-Z_\-\/]{4,30})\]/)) {
+				var threadName = logLine.replace(/(^.+)\[([0-9a-zA-Z_\-\/]{4,30})\](.+$)/i,"$2");
+				logLine = logLine.replace(/\[([0-9a-zA-Z_\-\/]{4,30})\]/,'[<span style="color: '+threadColors.get(threadName)+'">'+threadName+'</span>]');
+			}
+
+			res += logLine + '&nbsp;<a href="#link'+(j+1)+'">&gt;&gt;</a>\n';
 			
 			if (j < logLinesTimeDiff.length) {
 				var widthVal = logLinesTimeDiff[j] * 99 / maxDiffValue;
@@ -290,6 +345,7 @@ select {
 					widthVal = 99;
 				}
 				
+				// Draw the green line between the summary entries
 				//res += logLinesTimeDiff[j]+'\n';
 				if (widthVal > 0.1) {
 					res += '<div style="margin: 0px; padding: 0px; border-top: 1px solid #00ff00; width: '+widthVal+'%; height: 0px;"></div>';
@@ -360,7 +416,18 @@ select {
 		if (line.startsWith('[beanshell] ')) {
 			line = line.substring(12);
 		}
-	
+
+		if (line.startsWith('    [junit] ')) {
+			line = line.substring(12);
+		}
+
+		if (line.startsWith('     [exec] ')) {
+			line = line.substring(12);
+		}
+
+		line = line.replace(/\</g, "&lt;");
+		line = line.replace(/\>/g, "&gt;");
+
 		parseLineForInfo(line);
 		
 		/*var currentLineType = 0;
@@ -448,7 +515,7 @@ select {
 			// at Script1.run(Script1.groovy:14)
 			var groovyFailLine = res.replace(/(^.*Script[0-9]{1,5}\.run\(Script[0-9]{1,5}\.groovy:)([0-9]{1,5})(\).*$)/g, "$2");
 			
-			alert('groovyFailLine: '+groovyFailLine);
+			//alert('groovyFailLine: '+groovyFailLine);
 			
 			if (groovyFailLine) {
 				lastGroovyFailLine = parseInt(groovyFailLine);
@@ -459,17 +526,29 @@ select {
 		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"lsu\">$1LocalServiceUtil</span>.<span class=\"lsu\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)ServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssu\">$1ServiceUtil</span>.<span class=\"ssu\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)ServiceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssi\">$1ServiceImpl</span>.<span class=\"ssi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ResourceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"rri\">$1ResourceImpl</span>.<span class=\"rri\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)PersistenceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ppi\">$1PersistenceImpl</span>.<span class=\"ppi\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)ModelListener\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mli\">$1ModelListener</span>.<span class=\"mli\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)MVCActionCommand\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mva\">$1MVCActionCommand</span>.<span class=\"mva\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)DisplayContext\.([A-Za-z0-9_]+)\(/g, ".<span class=\"dcx\">$1DisplayContext</span>.<span class=\"dcx\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)Test\.tearDown\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">tearDown</span>(");
 		res = res.replace(/\.DBUpgraderLauncher\.main\(/g, ".<span class=\"upg\">DBUpgraderLauncher</span>.<span class=\"upg\">main</span>(");
 		res = res.replace(/\.TunnelServlet\./g, ".<span class=\"tun\">TunnelServlet</span>.");
 		res = res.replace(/\.TunnelUtil\./g, ".<span class=\"tun\">TunnelUtil</span>.");
 		res = res.replace(/com\.liferay\.portal\.kernel\.util\.MethodHandler/g, "com.liferay.portal.kernel.util.<span class=\"tun\">MethodHandler</span>");
 
 		res = res.replace(/com\.liferay/g, "<span class=\"kwd\">com.liferay</span>");
+
+		res = res.replace(/com\.microsoft\.sqlserver/g, "<span class=\"sql\">com.microsoft.sqlserver</span>");
+		res = res.replace(/com\.mysql/g, "<span class=\"sql\">com.mysql</span>");
+		res = res.replace(/com\.ibm\.db2/g, "<span class=\"sql\">com.ibm.db2</span>");
+		res = res.replace(/org\.mariadb/g, "<span class=\"sql\">org.mariadb</span>");
+		res = res.replace(/oracle\.jdbc\.driver/g, "<span class=\"sql\">oracle.jdbc.driver</span>");
+
+		res = res.replace(/org\.hibernate/g, "<span class=\"hib\">org.hibernate</span>");
+
+		res = res.replace(/poshi\.runner/g, "<span class=\"tst\">poshi.runner</span>");
 		
 		if (!res.includes(".BaseStagedModelDataHandler")) {
 			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelDataHandler\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1StagedModelDataHandler</span>.$2(");
@@ -724,28 +803,32 @@ var nonCustomLibraries = [
 ">com.liferay<",
 " com.amazonaws.",
 " com.ctc.wstx.",
+" com.fasterxml.",
 " com.google.",
 " com.ibm.",
 " com.mchange.",
 " com.microsoft.",
 " com.mysql.",
-" com.sun.proxy.",
+" com.sun.",
 " com.thoughtworks.",
 " com.valamis.",
 " com.zaxxer.",
 " de.schlichtherle.",
 " freemarker.",
+" graphql.kickstart.",
 " io.netty.",
 " io.undertow.",
 " java.",
 " javax.",
 " jdk.",
 " net.java.",
+" net.sf.",
 " oracle.",
 " org.apache.",
 " org.codehaus.",
 " org.eclipse.",
 " org.elasticsearch.",
+" org.gradle.",
 " org.hibernate.",
 " org.jboss.",
 " org.json.",
@@ -756,12 +839,15 @@ var nonCustomLibraries = [
 " org.osgi.",
 " org.postgresql.",
 " org.quartz.",
+" org.skyscreamer.",
 " org.springframework.",
 " org.tuckey.",
 " org.wildfly.",
 " org.xmlpull.",
 " org.xnio.",
 " sun.",
+" weblogic.",
+" worker.org.",
 "at Script1.run"
 ];
 
