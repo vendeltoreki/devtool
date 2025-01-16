@@ -1,5 +1,6 @@
 package fixenv.util;
 
+import java.io.File;
 import java.util.Map;
 
 public class ConfigUtil {
@@ -14,7 +15,7 @@ public class ConfigUtil {
 	
 	public static Map<String, String> getConfig() {
 		if (config == null) {
-			config = PropertiesFileReader.read(FileUtil.getJarParentDirPath()+"\\FixEnv.properties");
+			config = PropertiesFileReader.read(FileUtil.getJarParentDirPath() + File.separator + "FixEnv.properties");
 		}
 		
 		return config;
@@ -24,9 +25,7 @@ public class ConfigUtil {
 		String path = getConfig().get(MYSQL_BIN_PATH);
 		
 		if (path != null) {
-			if (path.contains("/")) {
-				path = path.replace("/", "\\");
-			}
+			path = FileUtil.replacePathSeparator(path);
 		} else {
 			path = MYSQL_BIN_PATH_DEFAULT;
 		}
@@ -38,9 +37,7 @@ public class ConfigUtil {
 		String path = getConfig().get(MYSQL_DUMP_PATH);
 		
 		if (path != null) {
-			if (path.contains("/")) {
-				path = path.replace("/", "\\");
-			}
+			path = FileUtil.replacePathSeparator(path);
 		} else {
 			path = MYSQL_DUMP_PATH_DEFAULT;
 		}

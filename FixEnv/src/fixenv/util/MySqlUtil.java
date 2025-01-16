@@ -1,5 +1,6 @@
 package fixenv.util;
 
+import java.io.File;
 import java.util.Map;
 
 public class MySqlUtil {
@@ -35,7 +36,11 @@ public class MySqlUtil {
 	}
 	
 	public void executeSQLCommand(String command) {
-		executeCommand("\""+ConfigUtil.getMySqlBinPath()+"mysql\" -u "+userName+" -p"+password+" -e \""+command+"\"");
+		if (File.separator.equals("\\")) {
+			executeCommand("\""+ConfigUtil.getMySqlBinPath()+"mysql\" -u "+userName+" -p"+password+" -e \""+command+"\"");
+		} else {
+			executeCommand(ConfigUtil.getMySqlBinPath()+" -u"+userName+" -p"+password+" -e \""+command+"\"");
+		}
 	}
 
 	public void executeCommand(String command) {
@@ -80,7 +85,8 @@ public class MySqlUtil {
 		"C:\Program Files\MySQL\MySQL Server 5.6\bin\mysql" -u root -ppassword -e "CREATE SCHEMA `lportal_master`;"
 		*/
 		
-		executeSQLCommand("DROP DATABASE `"+schemaName+"`;");
+		//executeSQLCommand("DROP DATABASE `"+schemaName+"`;");
+		executeSQLCommand("DROP SCHEMA `"+schemaName+"`;");
 
 		if (ConfigUtil.isMySqlCreateSchemaOptionsDefined()) {
 			executeSQLCommand("CREATE SCHEMA `"+schemaName+"` "+ConfigUtil.getMySqlCreateSchemaOptions()+" ;");

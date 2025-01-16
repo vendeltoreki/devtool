@@ -9,11 +9,11 @@ import fixenv.util.ArchiveProcessor;
 public class FixEnvTest {
 
 	public static void main(String[] args) throws Exception {
-		//testPath();
+		testPath();
 		//testTimeout();
 		//testPort();
 		//testSetenv();
-		testThemeRead();
+		//testThemeRead();
 	}
 	
 	private static void testThemeRead() throws Exception {

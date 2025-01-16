@@ -79,19 +79,25 @@ public class FileUtil {
 				.getLocation()
 				.getFile();
 		
-		if (srcFile.startsWith("/")) {
+		/*if (srcFile.startsWith("/")) {
 			srcFile = srcFile.substring(1);
-		}
+		}*/
 		
-		if (srcFile.contains("/")) {
-			srcFile = srcFile.replace("/", "\\");
-		}
+		srcFile = replacePathSeparator(srcFile);
 		
 		return srcFile;
 	}
 
+	public static String replacePathSeparator(String path) {
+		if (path != null && !File.separator.equals("/") && path.contains("/")) {
+			path = path.replace("/", File.separator);
+		}
+		
+		return path;
+	}
+	
 	public static String getJarParentDirPath() {
-		return StringUtils.splitLast(getJarPath(), "\\")[0];
+		return StringUtils.splitLast(getJarPath(), File.separator)[0];
 	}
 	
 	public static String findBundleDirOnPath(String workingDir) {
