@@ -425,6 +425,10 @@ select {
 			line = line.substring(12);
 		}
 
+		if (line.startsWith('liferay-1_1   | ')) {
+			line = line.substring(16);
+		}
+
 		line = line.replace(/\</g, "&lt;");
 		line = line.replace(/\>/g, "&gt;");
 
