@@ -526,16 +526,17 @@ select {
 			}
 		}
 		
-		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"lsi\">$1LocalServiceImpl</span>.<span class=\"lsi\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"lsu\">$1LocalServiceUtil</span>.<span class=\"lsu\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)ServiceUtil\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssu\">$1ServiceUtil</span>.<span class=\"ssu\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)ServiceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ssi\">$1ServiceImpl</span>.<span class=\"ssi\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)ResourceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"rri\">$1ResourceImpl</span>.<span class=\"rri\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)PersistenceImpl\.([A-Za-z0-9_]+)\(/g, ".<span class=\"ppi\">$1PersistenceImpl</span>.<span class=\"ppi\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)ModelListener\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mli\">$1ModelListener</span>.<span class=\"mli\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)MVCActionCommand\.([A-Za-z0-9_]+)\(/g, ".<span class=\"mva\">$1MVCActionCommand</span>.<span class=\"mva\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)DisplayContext\.([A-Za-z0-9_]+)\(/g, ".<span class=\"dcx\">$1DisplayContext</span>.<span class=\"dcx\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceBaseImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"lsi\">$1LocalServiceBaseImpl</span>.<span class=\"lsi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"lsi\">$1LocalServiceImpl</span>.<span class=\"lsi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)LocalServiceUtil\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"lsu\">$1LocalServiceUtil</span>.<span class=\"lsu\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ServiceUtil\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"ssu\">$1ServiceUtil</span>.<span class=\"ssu\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ServiceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"ssi\">$1ServiceImpl</span>.<span class=\"ssi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ResourceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"rri\">$1ResourceImpl</span>.<span class=\"rri\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)PersistenceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"ppi\">$1PersistenceImpl</span>.<span class=\"ppi\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)ModelListener\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"mli\">$1ModelListener</span>.<span class=\"mli\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)MVCActionCommand\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"mva\">$1MVCActionCommand</span>.<span class=\"mva\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)DisplayContext\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"dcx\">$1DisplayContext</span>.<span class=\"dcx\">$2</span>(");
+		res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_$]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)Test\.tearDown\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">tearDown</span>(");
 		res = res.replace(/\.DBUpgraderLauncher\.main\(/g, ".<span class=\"upg\">DBUpgraderLauncher</span>.<span class=\"upg\">main</span>(");
 		res = res.replace(/\.TunnelServlet\./g, ".<span class=\"tun\">TunnelServlet</span>.");
@@ -555,11 +556,15 @@ select {
 		res = res.replace(/poshi\.runner/g, "<span class=\"tst\">poshi.runner</span>");
 		
 		if (!res.includes(".BaseStagedModelDataHandler")) {
-			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelDataHandler\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smdh\">$1StagedModelDataHandler</span>.$2(");
+			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelDataHandler\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"smdh\">$1StagedModelDataHandler</span>.$2(");
+		}
+
+		if (!res.includes(".BasePortletDataHandler")) {
+			res = res.replace(/\.([A-Za-z0-9_]+)PortletDataHandler\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"smdh\">$1PortletDataHandler</span>.$2(");
 		}
 		
 		if (!res.includes(".BaseStagedModelRepository")) {
-			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelRepository\.([A-Za-z0-9_]+)\(/g, ".<span class=\"smr\">$1StagedModelRepository</span>.$2(");
+			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelRepository\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"smr\">$1StagedModelRepository</span>.$2(");
 		}
 
 		if (res.includes("com.liferay")) {
@@ -569,8 +574,8 @@ select {
 		}
 
 		// at com.sun.proxy.$Proxy761.getArticleDisplay(Unknown Source)
-		if (res.includes('at com.sun.proxy.$Proxy')) {
-			res = res.replace(/(at com\.sun\.proxy\.)(\$Proxy[0-9]{1,5}\.)([a-zA-Z0-9_]{1,50})(\()/g, '$1<span class="pxc">$2</span><span class="pxm">$3</span>$4');
+		if (res.includes('.$Proxy')) {
+			res = res.replace(/(\.)(\$Proxy[0-9]{1,5}\.)([a-zA-Z0-9_]{1,50})(\()/g, '$1<span class="pxc">$2</span><span class="pxm">$3</span>$4');
 			
 		}
 
@@ -824,6 +829,7 @@ var nonCustomLibraries = [
 " io.undertow.",
 " java.",
 " javax.",
+" jakarta.",
 " jdk.",
 " net.java.",
 " net.sf.",
@@ -835,6 +841,7 @@ var nonCustomLibraries = [
 " org.gradle.",
 " org.hibernate.",
 " org.jboss.",
+" org.jgroups.",
 " org.json.",
 " org.junit.",
 " org.kxml2.",
