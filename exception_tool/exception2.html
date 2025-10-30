@@ -65,6 +65,26 @@ select {
 	color: #88cc88;
 }
 
+.sch {
+	color: #88cccc;
+}
+
+.ftl {
+	color: #99bb99;
+}
+
+.jsp {
+	color: #cccc88;
+}
+
+.wbs {
+	color: #bbbb99;
+}
+
+.osgi {
+	color: #cc9999;
+}
+
 .lsi {
 	color: #ffffff;
 }
@@ -113,6 +133,10 @@ select {
 	color: #ff4499;
 }
 
+.tsti {
+	color: #dd66aa;
+}
+
 .upg {
 	color: #44ff99;
 }
@@ -134,7 +158,12 @@ select {
 }
 
 .bgt {
-	color: #994499;
+	color: #aa44aa;
+}
+
+.bgTaskLine {
+	background-color: #331133;
+	border: 1px solid #994499;
 }
 
 .dbindex {
@@ -442,6 +471,7 @@ select {
 		line = line.replace(/\>/g, "&gt;");
 
 		// convert intellij stack trace lines
+		// not working for: "lambda$doPerformActions$1:297, DefaultActionableDynamicQuery (com.liferay.portal.kernel.dao.orm)"
 		if (line.includes('(com.liferay.')) {
 			if (line.match(/^_{0,1}[a-zA-Z0-9]{1,50}:[0-9]{1,8}, [a-zA-Z0-9]{1,100} \([a-zA-Z0-9\.]{1,100}\)$/)) {
 				// _isImportPortletData:1441, ExportImportHelperImpl (com.liferay.exportimport.internal.lar)
@@ -539,10 +569,29 @@ select {
 		res = res.replace(/\.([A-Za-z0-9_]+)ResourceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"rri\">$1ResourceImpl</span>.<span class=\"rri\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)PersistenceImpl\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"ppi\">$1PersistenceImpl</span>.<span class=\"ppi\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)ModelListener\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"mli\">$1ModelListener</span>.<span class=\"mli\">$2</span>(");
+		if (!res.includes('com.liferay.portal.kernel.messaging')) {
+			res = res.replace(/\.([A-Za-z0-9_]+)MessageListener\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"mli\">$1MessageListener</span>.<span class=\"mli\">$2</span>(");
+		}
 		res = res.replace(/\.([A-Za-z0-9_]+)MVCActionCommand\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"mva\">$1MVCActionCommand</span>.<span class=\"mva\">$2</span>(");
 		res = res.replace(/\.([A-Za-z0-9_]+)DisplayContext\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"dcx\">$1DisplayContext</span>.<span class=\"dcx\">$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_$]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
-		res = res.replace(/\.([A-Za-z0-9_]+)Test\.tearDown\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">tearDown</span>(");
+
+		
+		if (res.includes('Test')) {
+			res = res.replace(/\.([A-Za-z0-9_]+TestUtil)\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"tsti\">$1</span>.<span class=\"tsti\">$2</span>(");
+
+			res = res.replace(/\.([A-Za-z0-9_]+)Test\.test([A-Za-z0-9_$]+)\(/g, ".<span class=\"tst\">$1Test</span>.<span class=\"tst\">test$2</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)Test\.tearDown\(/g, ".<span class=\"tsti\">$1Test</span>.<span class=\"tsti\">tearDown</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)Test\.setUp\(/g, ".<span class=\"tsti\">$1Test</span>.<span class=\"tsti\">setUp</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)Test\.setUpClass\(/g, ".<span class=\"tsti\">$1Test</span>.<span class=\"tsti\">setUpClass</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)Test\.tearDownClass\(/g, ".<span class=\"tsti\">$1Test</span>.<span class=\"tsti\">tearDownClass</span>(");
+
+			res = res.replace(/\.([A-Za-z0-9_]+)TestCase\.test([A-Za-z0-9_$]+)\(/g, ".<span class=\"tst\">$1TestCase</span>.<span class=\"tst\">test$2</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)TestCase\.tearDown\(/g, ".<span class=\"tsti\">$1TestCase</span>.<span class=\"tsti\">tearDown</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)TestCase\.setUp\(/g, ".<span class=\"tsti\">$1TestCase</span>.<span class=\"tsti\">setUp</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)TestCase\.setUpClass\(/g, ".<span class=\"tsti\">$1TestCase</span>.<span class=\"tsti\">setUpClass</span>(");
+			res = res.replace(/\.([A-Za-z0-9_]+)TestCase\.tearDownClass\(/g, ".<span class=\"tsti\">$1TestCase</span>.<span class=\"tsti\">tearDownClass</span>(");
+		}
+
 		res = res.replace(/\.DBUpgraderLauncher\.main\(/g, ".<span class=\"upg\">DBUpgraderLauncher</span>.<span class=\"upg\">main</span>(");
 		res = res.replace(/\.TunnelServlet\./g, ".<span class=\"tun\">TunnelServlet</span>.");
 		res = res.replace(/\.TunnelUtil\./g, ".<span class=\"tun\">TunnelUtil</span>.");
@@ -550,17 +599,65 @@ select {
 
 		res = res.replace(/com\.liferay/g, "<span class=\"kwd\">com.liferay</span>");
 
-		res = res.replace(/com\.microsoft\.sqlserver/g, "<span class=\"sql\">com.microsoft.sqlserver</span>");
-		res = res.replace(/com\.mysql/g, "<span class=\"sql\">com.mysql</span>");
-		res = res.replace(/com\.ibm\.db2/g, "<span class=\"sql\">com.ibm.db2</span>");
-		res = res.replace(/org\.mariadb/g, "<span class=\"sql\">org.mariadb</span>");
-		res = res.replace(/org\.postgresql/g, "<span class=\"sql\">org.postgresql</span>");
-		res = res.replace(/oracle\.jdbc\.driver/g, "<span class=\"sql\">oracle.jdbc.driver</span>");
-
-		res = res.replace(/org\.hibernate/g, "<span class=\"hib\">org.hibernate</span>");
-
-		res = res.replace(/poshi\.runner/g, "<span class=\"tst\">poshi.runner</span>");
+		// highlight third-party libraries
+		res = res.replace(/ com\.microsoft\.sqlserver\./g, " <span class=\"sql\">com.microsoft.sqlserver</span>.");
+		res = res.replace(/ com\.mysql\./g, " <span class=\"sql\">com.mysql</span>.");
+		res = res.replace(/ com\.ibm\.db2\./g, " <span class=\"sql\">com.ibm.db2</span>.");
+		res = res.replace(/ org\.mariadb\./g, " <span class=\"sql\">org.mariadb</span>.");
+		res = res.replace(/ org\.postgresql\./g, "< span class=\"sql\">org.postgresql</span>.");
+		res = res.replace(/ oracle\.jdbc\.driver\./g, " <span class=\"sql\">oracle.jdbc.driver</span>.");
 		
+		res = res.replace(/ org\.hibernate\./g, " <span class=\"hib\">org.hibernate</span>.");
+
+		res = res.replace(/ org\.elasticsearch\./g, " <span class=\"sch\">org.elasticsearch</span>.");
+		res = res.replace(/\.elasticsearch7\./g, ".<span class=\"sch\">elasticsearch7</span>.");
+
+		res = res.replace(/poshi\.runner\./g, "<span class=\"tst\">poshi.runner</span>.");
+
+		res = res.replace(/ freemarker\.([a-z0-9]{1,20})\./g, " <span class=\"ftl\">freemarker.$1</span>.");
+
+		/* ==== JSP ==== */
+
+		// at org.apache.jsp.publish.simple.publish_005flayouts_005fsimple_jsp._jspService(publish_005flayouts_005fsimple_jsp.java:1656) ~[?:?]
+		// at org.apache.jsp.import_.new_005fimport.import_005flayouts_005fresources_jsp._jspService(import_005flayouts_005fresources_jsp.java:366) ~[?:?] --- import_layouts_resources.jsp
+		
+		/*if (res.includes("_jsp.java")) {
+			var arr = res.matchAll(/\(([a-z0-9_]{1,100})_jsp\.java:[0-9]{1,8}\)/g);
+
+			arr = Array.from(arr);
+
+			if (arr.length > 0 && arr[0].length > 0) {
+				var jspname = arr[0][1];
+				jspname = jspname.replace(/_005f/g, '_');
+				res = res + " --- <span class=\"jsp\">"+jspname+".jsp</span>";
+			}
+		}*/
+
+		if (res.includes("_jsp.java")) {
+			var arr = res.matchAll(/org\.apache\.jsp\.([a-z0-9_\.]{1,200})_jsp\._jspService\(/g);
+
+			arr = Array.from(arr);
+
+			if (arr.length > 0 && arr[0].length > 0) {
+				var jspname = arr[0][1];
+				jspname = jspname.replace(/_\./g, '/');
+				jspname = jspname.replace(/\./g, '/');
+				jspname = jspname.replace(/_005f/g, '_');
+				res = res + " --- <span class=\"jsp\">"+jspname+".jsp</span>";
+			}
+		}
+
+		res = res.replace(/ org\.apache\.jasper\./g, " <span class=\"jsp\">org.apache.jasper</span>.");
+		res = res.replace(/ org\.apache\.jsp\./g, " <span class=\"jsp\">org.apache.jsp</span>.");
+
+		res = res.replace(/ org\.apache\.catalina\./g, " <span class=\"wbs\">org.apache.catalina</span>.");
+		res = res.replace(/ org\.apache\.coyote\./g, " <span class=\"wbs\">org.apache.coyote</span>.");
+		res = res.replace(/ org\.apache\.tomcat\./g, " <span class=\"wbs\">org.apache.tomcat</span>.");
+
+		res = res.replace(/ org\.osgi\./g, " <span class=\"osgi\">org.osgi</span>.");
+		res = res.replace(/ org\.eclipse\.osgi\./g, " <span class=\"osgi\">org.eclipse.osgi</span>.");
+		
+
 		if (!res.includes(".BaseStagedModelDataHandler")) {
 			res = res.replace(/\.([A-Za-z0-9_]+)StagedModelDataHandler\.([A-Za-z0-9_$]+)\(/g, ".<span class=\"smdh\">$1StagedModelDataHandler</span>.$2(");
 		}
@@ -610,6 +707,11 @@ select {
 		}
 
 		if (res.includes("BackgroundTaskExecutor")) {
+
+			if (containsAny(res, bgTaskNames)) {
+				res = "<span class=\"bgTaskLine\">"+res+"<span class=\"bgt\"> -- background task</span></span>";
+			}
+
 			if (!res.includes(".SerialBackgroundTaskExecutor.") && !res.includes(".DelegatingBackgroundTaskExecutor.") && !res.includes(".ThreadLocalAwareBackgroundTaskExecutor.")) {
 				res = res.replace(/\.([A-Za-z0-9_]+)BackgroundTaskExecutor\.([A-Za-z0-9_]+)\(/g, ".<span class=\"bgt\">$1BackgroundTaskExecutor</span>.$2(");
 			}
@@ -804,6 +906,19 @@ var info = {};
 var groovyLines = [];
 var lastGroovyFailLine = -1;
 
+var bgTaskNames = [
+".LayoutExportBackgroundTaskExecutor.",
+".LayoutImportBackgroundTaskExecutor.",
+".LayoutRemoteStagingBackgroundTaskExecutor.",
+".LayoutSetPrototypeImportBackgroundTaskExecutor.",
+".LayoutSetPrototypeMergeBackgroundTaskExecutor.",
+".LayoutStagingBackgroundTaskExecutor.",
+".PortletExportBackgroundTaskExecutor.",
+".PortletImportBackgroundTaskExecutor.",
+".PortletRemoteStagingBackgroundTaskExecutor.",
+".PortletStagingBackgroundTaskExecutor."
+];
+
 var hideExpr = [
 "BaseFilter.doFilter",
 "BaseFilter.processFilter",
@@ -836,6 +951,7 @@ var nonCustomLibraries = [
 " de.schlichtherle.",
 " freemarker.",
 " graphql.kickstart.",
+" groovy.lang.",
 " io.netty.",
 " io.undertow.",
 " java.",
