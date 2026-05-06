@@ -455,7 +455,7 @@ select {
 			line = line.substring(12);
 		}
 
-		if (line.startsWith('     [exec] ')) {
+		while (line.startsWith('     [exec] ')) {
 			line = line.substring(12);
 		}
 
@@ -473,9 +473,10 @@ select {
 		// convert intellij stack trace lines
 		// not working for: "lambda$doPerformActions$1:297, DefaultActionableDynamicQuery (com.liferay.portal.kernel.dao.orm)"
 		if (line.includes('(com.liferay.')) {
-			if (line.match(/^_{0,1}[a-zA-Z0-9]{1,50}:[0-9]{1,8}, [a-zA-Z0-9]{1,100} \([a-zA-Z0-9\.]{1,100}\)$/)) {
+			if (line.match(/^_{0,1}[a-zA-Z0-9]{1,50}:[0-9]{1,8}, [a-zA-Z0-9]{1,100} \([a-zA-Z0-9\._]{1,100}\)$/)) {
 				// _isImportPortletData:1441, ExportImportHelperImpl (com.liferay.exportimport.internal.lar)
-				line = line.replace(/^(_{0,1}[a-zA-Z0-9]{1,50}):([0-9]{1,8}), ([a-zA-Z0-9\$]{1,100}) \(([a-zA-Z0-9\.]{1,100})\)$/g, "\t at $4.$3.$1($3.java:$2)");
+				// _addAssetVocabulary:503, TaxonomyVocabularyResourceImpl (com.liferay.headless.admin.taxonomy.internal.resource.v1_0)
+				line = line.replace(/^(_{0,1}[a-zA-Z0-9]{1,50}):([0-9]{1,8}), ([a-zA-Z0-9\$]{1,100}) \(([a-zA-Z0-9\._]{1,100})\)$/g, "\t at $4.$3.$1($3.java:$2)");
 			} else if (line.match(/^_{0,1}[a-zA-Z0-9]{1,50}:[0-9]{1,8}, [a-zA-Z0-9\$]{1,100} \([a-zA-Z0-9\.]{1,100}\)$/)) {
 				// call:129, LayoutImportBackgroundTaskExecutor$LayoutImportCallable (com.liferay.exportimport.internal.background.task)
 				line = line.replace(/^(_{0,1}[a-zA-Z0-9]{1,50}):([0-9]{1,8}), ([a-zA-Z0-9]{1,100})\$([a-zA-Z0-9]{1,100}) \(([a-zA-Z0-9\.]{1,100})\)$/g, "\t at $5.$3$$$4.$1($3.java:$2)");
@@ -603,6 +604,7 @@ select {
 		res = res.replace(/ com\.microsoft\.sqlserver\./g, " <span class=\"sql\">com.microsoft.sqlserver</span>.");
 		res = res.replace(/ com\.mysql\./g, " <span class=\"sql\">com.mysql</span>.");
 		res = res.replace(/ com\.ibm\.db2\./g, " <span class=\"sql\">com.ibm.db2</span>.");
+		res = res.replace(/ org\.hsqldb\./g, " <span class=\"sql\">org.hsqldb</span>.");
 		res = res.replace(/ org\.mariadb\./g, " <span class=\"sql\">org.mariadb</span>.");
 		res = res.replace(/ org\.postgresql\./g, "< span class=\"sql\">org.postgresql</span>.");
 		res = res.replace(/ oracle\.jdbc\.driver\./g, " <span class=\"sql\">oracle.jdbc.driver</span>.");
@@ -620,7 +622,8 @@ select {
 
 		// at org.apache.jsp.publish.simple.publish_005flayouts_005fsimple_jsp._jspService(publish_005flayouts_005fsimple_jsp.java:1656) ~[?:?]
 		// at org.apache.jsp.import_.new_005fimport.import_005flayouts_005fresources_jsp._jspService(import_005flayouts_005fresources_jsp.java:366) ~[?:?] --- import_layouts_resources.jsp
-		
+		// at org.apache.jsp.export.export_005ftemplates.actions_jsp._jspService(actions_jsp:835) ~[?:?]
+
 		/*if (res.includes("_jsp.java")) {
 			var arr = res.matchAll(/\(([a-z0-9_]{1,100})_jsp\.java:[0-9]{1,8}\)/g);
 
