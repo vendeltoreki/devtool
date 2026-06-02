@@ -40,6 +40,9 @@ SCHEMA_COUNT_QUERY = (
 # Liferay partition schemas: "lpartition_<companyId>", with companyId being numeric.
 _PARTITION_RE = re.compile(r"^lpartition_(\d+)$")
 
+# Schema name out of a jdbc URL: jdbc:mysql://host[:port]/<schema>?...
+_JDBC_SCHEMA_RE = re.compile(r"jdbc:(?:mysql|mariadb)://[^/]+/([^?;\s]+)", re.IGNORECASE)
+
 
 @dataclass
 class Hit:
@@ -88,6 +91,7 @@ class PortalSource:
     last_commit_epoch: int | None = None  # committer date of HEAD, unix seconds
     last_commit_rel: str = ""  # git's relative form, e.g. "6 hours ago"
     dirty: bool = False  # working tree has uncommitted changes
+    db_schema_name: str = ""  # schema from the bundle's jdbc.default.url, if any
 
 
 def _cmdline(p: psutil.Process) -> list[str]:
@@ -392,6 +396,23 @@ def _build_target(source_dir: str, user: str) -> str:
     return os.path.normpath(resolved) if "${" not in resolved else resolved
 
 
+def _active_jdbc_schema(properties_path: str) -> str:
+    """Schema name from the first uncommented ``jdbc.default.url`` in a
+    portal-ext.properties. Returns "" if absent."""
+    try:
+        with open(properties_path) as fh:
+            for line in fh:
+                s = line.strip()
+                if s.startswith("#") or not s.lower().startswith("jdbc.default.url"):
+                    continue
+                m = _JDBC_SCHEMA_RE.search(s)
+                if m:
+                    return m.group(1)
+    except OSError:
+        return ""
+    return ""
+
+
 def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
     """Discover portal source checkouts under ``root``: directories that are git
     repos (or worktrees) and carry an ``app.server.properties`` marker."""
@@ -444,6 +465,10 @@ def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
             )
             if tomcats:
                 src.app_server_dir = tomcats[-1]  # newest version on top
+        if target:
+            src.db_schema_name = _active_jdbc_schema(
+                os.path.join(target, "portal-ext.properties")
+            )
         sources.append(src)
     return sources
 
@@ -623,43 +648,193 @@ def _print_db_section(title: str, db: DbResult) -> None:
 _SOURCE_MAX_AGE_DAYS = 30
 
 
-def _print_portal_sources_section(
-    title: str, sources: list[PortalSource], root: str
+def _print_portal_group(
+    s: PortalSource,
+    server: Hit | None,
+    builds: list[Hit],
+    upgrades: list[Hit],
+    db_schemas: list[DbHit],
+    show_cwd: bool,
 ) -> None:
-    header = f"{title} [{root}]"
-    print(f"\n{header}")
-    print("-" * len(header))
-    if not sources:
-        print("  (none)")
-        return
+    """Print one portal source and everything that hangs off it: build target,
+    running instance, in-flight builds/upgrades, and database."""
+    wt = " (worktree)" if s.is_worktree else ""
+    dirty = "  (dirty)" if s.dirty else ""
+    status_plain = "  ● RUNNING" if server else ""
+    head_plain = f"{s.name}{wt}  @{s.branch or '?'}{dirty}{status_plain}"
+    status = _warn(status_plain) if server else ""
+    print(f"\n{s.name}{wt}  @{s.branch or '?'}{dirty}{status}")
+    print("-" * len(head_plain))
 
+    upd = f"  (updated {s.last_commit_rel})" if s.last_commit_rel else ""
+    print(f"  source:   {s.path}{upd}")
+    if s.remote:
+        print(f"  repo:     {s.remote}")
+    if s.target_dir:
+        built = "" if s.target_exists else "  (not built)"
+        srv = f"  [{os.path.basename(s.app_server_dir)}]" if s.app_server_dir else ""
+        print(f"  build:    {s.target_dir}{built}{srv}")
+
+    if server:
+        descr, problems = _proc_descr(server)
+        print(f"  portal:   {descr}")
+        for p in problems:
+            print(f"            {_warn('! ' + p)}")
+    for h in builds:
+        descr, _ = _proc_descr(h)
+        print(f"  building: {descr}  {h.label}")
+    for h in upgrades:
+        descr, _ = _proc_descr(h)
+        print(f"  upgrade:  {descr}")
+
+    if db_schemas:
+        main = db_schemas[0]
+        print(f"  database: {main.tables} tables  {main.schema}")
+        for kid in db_schemas[1:]:
+            print(f"              └ {kid.tables} tables  {kid.schema}")
+    elif s.db_schema_name:
+        print(f"  database: {s.db_schema_name}  (not created yet)")
+
+
+def _print_portals_grouped(
+    sources: list[PortalSource],
+    portals: list[Hit],
+    tomcats: list[Hit],
+    upgrades: list[Hit],
+    ants: list[Hit],
+    db: DbResult,
+    args,
+) -> None:
+    """Render everything grouped per portal source, then trailing sections for
+    processes and databases that didn't map to a known source."""
+    norm = os.path.normpath
+    used_hits: set[int] = set()
+    used_schemas: set[str] = set()
+
+    def base_of(h: Hit) -> str:
+        return norm(h.label or h.cwd) if (h.label or h.cwd) else ""
+
+    # A running portal/tomcat belongs to the source whose app server dir it runs from.
+    server_by_source: dict[str, Hit] = {}
+    for s in sources:
+        if not s.app_server_dir:
+            continue
+        tgt = norm(s.app_server_dir)
+        for h in portals + tomcats:
+            if id(h) in used_hits:
+                continue
+            base = base_of(h)
+            if base == tgt or base.startswith(tgt + os.sep):
+                server_by_source[s.path] = h
+                s.running_pid = h.proc.pid
+                used_hits.add(id(h))
+                break
+
+    # An ant build belongs to the source it runs inside (longest path match wins).
+    def assign_by_path(hits: list[Hit], key) -> dict[str, list[Hit]]:
+        out: dict[str, list[Hit]] = {}
+        for h in hits:
+            target = norm(h.cwd or "") if key == "cwd" else base_of(h)
+            best: PortalSource | None = None
+            for s in sources:
+                anchor = norm(s.path) if key == "cwd" else norm(s.target_dir or "")
+                if not anchor:
+                    continue
+                if target == anchor or target.startswith(anchor + os.sep):
+                    if best is None or len(anchor) > len(
+                        norm(best.path if key == "cwd" else (best.target_dir or ""))
+                    ):
+                        best = s
+            if best is not None:
+                out.setdefault(best.path, []).append(h)
+                used_hits.add(id(h))
+        return out
+
+    builds_by_source = assign_by_path(ants, "cwd")
+    upgrades_by_source = assign_by_path(upgrades, "target")
+
+    # A schema belongs to the source whose bundle jdbc URL points at it; its
+    # partitions ride along.
+    schema_index = {sc.schema: sc for sc in db.schemas}
+    children_by_parent: dict[str, list[DbHit]] = {}
+    for sc in db.schemas:
+        if sc.parent:
+            children_by_parent.setdefault(sc.parent, []).append(sc)
+    db_by_source: dict[str, list[DbHit]] = {}
+    for s in sources:
+        main = schema_index.get(s.db_schema_name) if s.db_schema_name else None
+        if main is None:
+            continue
+        kids = sorted(children_by_parent.get(main.schema, []),
+                      key=lambda h: h.company_id or 0)
+        db_by_source[s.path] = [main] + kids
+        used_schemas.add(main.schema)
+        used_schemas.update(k.schema for k in kids)
+
+    # Show sources committed to in the last 30 days, or any with live activity.
     cutoff = time.time() - _SOURCE_MAX_AGE_DAYS * 86400
-    # Hide sources that haven't been committed to in the last 30 days. Unknown
-    # commit dates (epoch is None) are kept rather than silently dropped.
-    active = [s for s in sources
-              if s.last_commit_epoch is None or s.last_commit_epoch >= cutoff]
-    hidden = len(sources) - len(active)
+    shown: list[PortalSource] = []
+    hidden = 0
+    for s in sources:
+        live = (s.path in server_by_source or s.path in builds_by_source
+                or s.path in upgrades_by_source)
+        recent = s.last_commit_epoch is None or s.last_commit_epoch >= cutoff
+        if recent or live:
+            shown.append(s)
+        else:
+            hidden += 1
 
-    if not active:
-        print(f"  (none active in the last {_SOURCE_MAX_AGE_DAYS} days)")
-    for s in active:
-        wt = " (worktree)" if s.is_worktree else ""
-        branch = s.branch or "?"
-        run = _warn(f"  ● RUNNING pid={s.running_pid}") if s.running_pid else ""
-        print(f"  {s.name}{wt}  @{branch}{run}")
-        if s.last_commit_rel:
-            dirty = "  (dirty)" if s.dirty else ""
-            print(f"      updated: {s.last_commit_rel}{dirty}")
-        if s.remote:
-            print(f"      repo:    {s.remote}")
-        if s.target_dir:
-            mark = "" if s.target_exists else "  (not built)"
-            print(f"      target:  {s.target_dir}{mark}")
-            if s.app_server_dir:
-                print(f"      server:  {os.path.basename(s.app_server_dir)}")
+    print("\nPortals")
+    print("=======")
+    if not shown:
+        print("  (no active portal sources)")
+    for s in shown:
+        _print_portal_group(
+            s, server_by_source.get(s.path), builds_by_source.get(s.path, []),
+            upgrades_by_source.get(s.path, []), db_by_source.get(s.path, []), args.cwd,
+        )
     if hidden:
-        print(f"  ({hidden} inactive source{'s' if hidden != 1 else ''} hidden, "
+        print(f"\n  ({hidden} inactive source{'s' if hidden != 1 else ''} hidden, "
               f"no commits in {_SOURCE_MAX_AGE_DAYS}+ days)")
+
+    # Trailing sections: anything that didn't map to a source.
+    orphan_portals = [h for h in portals if id(h) not in used_hits]
+    other_tomcats = [h for h in tomcats if id(h) not in used_hits]
+    orphan_upgrades = [h for h in upgrades if id(h) not in used_hits]
+    orphan_builds = [h for h in ants if id(h) not in used_hits]
+    any_portal = bool(server_by_source) or bool(orphan_portals)
+
+    if orphan_portals:
+        _print_section("Portal instances (no matching source)", orphan_portals, args.cwd)
+    if other_tomcats and (args.all_tomcat or not any_portal):
+        _print_section("Other Tomcat instances", other_tomcats, args.cwd)
+    if orphan_upgrades:
+        _print_section("DB upgrades (no matching source)", orphan_upgrades, args.cwd)
+    if orphan_builds:
+        _print_section("Builds (no matching source)", orphan_builds, args.cwd)
+
+    leftover = DbResult(
+        source=db.source, error=db.error,
+        schemas=[sc for sc in db.schemas if sc.schema not in used_schemas],
+    )
+    title = "Other databases" if used_schemas else "Liferay databases"
+    if leftover.schemas or leftover.error or not used_schemas:
+        _print_db_section(title, leftover)
+
+
+def _proc_descr(h: Hit) -> tuple[str, list[str]]:
+    """Compact process descriptor ('pid=.. up=.. ports=.. threads=..') plus any
+    thread-health warnings. Thread info is only gathered for portal/tomcat."""
+    ports = ",".join(str(p) for p in h.ports) if h.ports else "-"
+    extra = ""
+    problems: list[str] = []
+    if h.kind in ("portal", "tomcat"):
+        os_states, java_states = _thread_info(h.proc.pid)
+        ts = _thread_summary(os_states, java_states)
+        if ts:
+            extra = f"  {ts}"
+        problems = _thread_problems(os_states, java_states)
+    return f"pid={h.proc.pid} up={_uptime(h.proc)} ports={ports}{extra}", problems
 
 
 def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
@@ -669,35 +844,12 @@ def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
         print("  (none)")
         return
     for h in hits:
-        ports = ",".join(str(p) for p in h.ports) if h.ports else "-"
-        extra = ""
-        problems: list[str] = []
-        if h.kind in ("portal", "tomcat"):
-            os_states, java_states = _thread_info(h.proc.pid)
-            ts = _thread_summary(os_states, java_states)
-            if ts:
-                extra = f"{ts:<28} "
-            problems = _thread_problems(os_states, java_states)
-        line = f"  pid={h.proc.pid:<7} up={_uptime(h.proc):<6} ports={ports:<20} {extra}{h.label}"
-        print(line)
+        descr, problems = _proc_descr(h)
+        print(f"  {descr}  {h.label}")
         for problem in problems:
             print(f"          {_warn('! ' + problem)}")
         if show_cwd and h.cwd and h.cwd != h.label:
             print(f"          cwd: {h.cwd}")
-
-
-def _link_running(sources: list[PortalSource], running: list[Hit]) -> None:
-    """Mark each source whose build target hosts a running portal/tomcat process.
-    A portal Hit's label/cwd is its catalina.base (``<bundle>/tomcat-X.Y.Z``)."""
-    for s in sources:
-        if not s.app_server_dir:
-            continue
-        target = os.path.normpath(s.app_server_dir)
-        for h in running:
-            base = os.path.normpath(h.label or h.cwd)
-            if base == target or base.startswith(target + os.sep):
-                s.running_pid = h.proc.pid
-                break
 
 
 def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hit], list[Hit], list[Hit], DbResult, list[PortalSource]]:
@@ -711,18 +863,9 @@ def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hi
     ants = [h for h in hits if h.kind == "ant"]
 
     sources = find_portal_sources(args.projects_dir)
-    _link_running(sources, portals + tomcats)
-
-    _print_section("Portal (Tomcat) instances", portals, args.cwd)
-    if args.all_tomcat or (not portals and tomcats):
-        _print_section("Other Tomcat instances", tomcats, args.cwd)
-    _print_section("Portal DB upgrades", upgrades, args.cwd)
-    _print_section("Portal builds (ant)", ants, args.cwd)
-
-    _print_portal_sources_section("Portal source directories", sources, args.projects_dir)
-
     db = find_db_hits(cached=db_cache)
-    _print_db_section("Liferay databases", db)
+
+    _print_portals_grouped(sources, portals, tomcats, upgrades, ants, db, args)
 
     return 0, portals, tomcats, upgrades, ants, db, sources
 
