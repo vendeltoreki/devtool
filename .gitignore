@@ -11,3 +11,7 @@
 .DS_Store
 /bundle_paths.properties
 /bundle_scan.properties
+
+# Python
+__pycache__/
+*.py[cod]
