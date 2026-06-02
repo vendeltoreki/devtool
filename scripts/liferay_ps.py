@@ -85,6 +85,9 @@ class PortalSource:
     target_exists: bool = False
     # pid of a portal/tomcat process running out of this source's target, if any.
     running_pid: int | None = None
+    last_commit_epoch: int | None = None  # committer date of HEAD, unix seconds
+    last_commit_rel: str = ""  # git's relative form, e.g. "6 hours ago"
+    dirty: bool = False  # working tree has uncommitted changes
 
 
 def _cmdline(p: psutil.Process) -> list[str]:
@@ -415,6 +418,17 @@ def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
             branch = f"detached@{sha}" if sha else "detached"
         src.branch = branch
         src.remote = _git(path, "config", "--get", "remote.origin.url")
+        # Last commit: epoch (for the 30-day filter) + git's relative form (tab-sep).
+        info = _git(path, "log", "-1", "--format=%ct%x09%cr")
+        if info:
+            ts, _, rel = info.partition("\t")
+            src.last_commit_rel = rel
+            try:
+                src.last_commit_epoch = int(ts)
+            except ValueError:
+                pass
+        # Any output from --porcelain means uncommitted changes are present.
+        src.dirty = bool(_git(path, "status", "--porcelain"))
         target = _build_target(path, user)
         src.target_dir = target
         src.target_exists = bool(target) and os.path.isdir(target)
@@ -600,6 +614,10 @@ def _print_db_section(title: str, db: DbResult) -> None:
         print(f"  {o.tables:<6} {o.schema}  (orphan)")
 
 
+# Sources whose last commit is older than this are hidden as inactive.
+_SOURCE_MAX_AGE_DAYS = 30
+
+
 def _print_portal_sources_section(
     title: str, sources: list[PortalSource], root: str
 ) -> None:
@@ -609,18 +627,34 @@ def _print_portal_sources_section(
     if not sources:
         print("  (none)")
         return
-    for s in sources:
+
+    cutoff = time.time() - _SOURCE_MAX_AGE_DAYS * 86400
+    # Hide sources that haven't been committed to in the last 30 days. Unknown
+    # commit dates (epoch is None) are kept rather than silently dropped.
+    active = [s for s in sources
+              if s.last_commit_epoch is None or s.last_commit_epoch >= cutoff]
+    hidden = len(sources) - len(active)
+
+    if not active:
+        print(f"  (none active in the last {_SOURCE_MAX_AGE_DAYS} days)")
+    for s in active:
         wt = " (worktree)" if s.is_worktree else ""
         branch = s.branch or "?"
         run = _warn(f"  ● RUNNING pid={s.running_pid}") if s.running_pid else ""
         print(f"  {s.name}{wt}  @{branch}{run}")
+        if s.last_commit_rel:
+            dirty = "  (dirty)" if s.dirty else ""
+            print(f"      updated: {s.last_commit_rel}{dirty}")
         if s.remote:
-            print(f"      repo:   {s.remote}")
+            print(f"      repo:    {s.remote}")
         if s.target_dir:
             mark = "" if s.target_exists else "  (not built)"
-            print(f"      target: {s.target_dir}{mark}")
+            print(f"      target:  {s.target_dir}{mark}")
             if s.app_server_dir:
-                print(f"      server: {os.path.basename(s.app_server_dir)}")
+                print(f"      server:  {os.path.basename(s.app_server_dir)}")
+    if hidden:
+        print(f"  ({hidden} inactive source{'s' if hidden != 1 else ''} hidden, "
+              f"no commits in {_SOURCE_MAX_AGE_DAYS}+ days)")
 
 
 def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
