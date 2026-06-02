@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import getpass
+import glob
 import json
 import os
 import re
@@ -18,6 +20,9 @@ import psutil
 
 # Schemas MySQL ships with — never user data.
 DEFAULT_MYSQL_SCHEMAS = {"information_schema", "mysql", "performance_schema", "sys"}
+
+# Where portal source checkouts live. Override with --projects-dir.
+DEFAULT_PROJECTS_DIR = os.path.expanduser("~/dev/projects")
 
 # Color only when writing to a real terminal and the user hasn't opted out.
 _USE_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
@@ -66,6 +71,20 @@ class DbResult:
     source: str  # human-readable description of where we got the data
     schemas: list[DbHit] = field(default_factory=list)
     error: str = ""
+
+
+@dataclass
+class PortalSource:
+    path: str
+    name: str
+    branch: str = ""
+    remote: str = ""
+    is_worktree: bool = False  # git worktree (`.git` is a file, not a dir)
+    target_dir: str = ""  # build/deploy target — app.server.parent.dir, resolved
+    app_server_dir: str = ""  # the tomcat-* bundle dir inside target_dir, if present
+    target_exists: bool = False
+    # pid of a portal/tomcat process running out of this source's target, if any.
+    running_pid: int | None = None
 
 
 def _cmdline(p: psutil.Process) -> list[str]:
@@ -320,6 +339,96 @@ def find_hits() -> list[Hit]:
     return hits
 
 
+def _git(path: str, *args: str) -> str:
+    """Run a read-only git command in ``path``; return stripped stdout or ""."""
+    try:
+        r = subprocess.run(
+            ["git", "-C", path, *args],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def _prop(path: str, key: str) -> str:
+    """Read a single ``key=value`` from a .properties file. Skips comments and
+    leading whitespace; returns "" if the file or key is absent."""
+    try:
+        with open(path) as fh:
+            for line in fh:
+                s = line.strip()
+                if s.startswith("#") or "=" not in s:
+                    continue
+                k, _, v = s.partition("=")
+                if k.strip() == key:
+                    return v.strip()
+    except OSError:
+        return ""
+    return ""
+
+
+def _build_target(source_dir: str, user: str) -> str:
+    """Resolve a portal source's build/deploy target (``app.server.parent.dir``).
+
+    The per-user ``app.server.<user>.properties`` overrides the checked-in
+    ``app.server.properties``; if neither sets it, fall back to the portal
+    default of ``${project.dir}/../bundles``. ``${project.dir}`` resolves to the
+    source directory itself."""
+    raw = ""
+    if user:
+        raw = _prop(os.path.join(source_dir, f"app.server.{user}.properties"),
+                    "app.server.parent.dir")
+    if not raw:
+        raw = _prop(os.path.join(source_dir, "app.server.properties"),
+                    "app.server.parent.dir")
+    if not raw:
+        raw = "${project.dir}/../bundles"
+    resolved = raw.replace("${project.dir}", source_dir)
+    # Only normalize when fully resolved — an unknown ${...} would be mangled.
+    return os.path.normpath(resolved) if "${" not in resolved else resolved
+
+
+def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
+    """Discover portal source checkouts under ``root``: directories that are git
+    repos (or worktrees) and carry an ``app.server.properties`` marker."""
+    user = os.environ.get("USER") or getpass.getuser()
+    sources: list[PortalSource] = []
+    try:
+        entries = sorted(os.listdir(root))
+    except OSError:
+        return []
+    for name in entries:
+        path = os.path.join(root, name)
+        git_marker = os.path.join(path, ".git")
+        if not os.path.exists(git_marker):
+            continue
+        # Portal source heuristic: the build entry point lives here.
+        if not os.path.isfile(os.path.join(path, "app.server.properties")):
+            continue
+        src = PortalSource(
+            path=path, name=name, is_worktree=os.path.isfile(git_marker),
+        )
+        branch = _git(path, "rev-parse", "--abbrev-ref", "HEAD")
+        if branch == "HEAD":  # detached — show the short commit instead
+            sha = _git(path, "rev-parse", "--short", "HEAD")
+            branch = f"detached@{sha}" if sha else "detached"
+        src.branch = branch
+        src.remote = _git(path, "config", "--get", "remote.origin.url")
+        target = _build_target(path, user)
+        src.target_dir = target
+        src.target_exists = bool(target) and os.path.isdir(target)
+        if src.target_exists:
+            tomcats = sorted(
+                t for t in glob.glob(os.path.join(target, "tomcat-*"))
+                if os.path.isdir(t)
+            )
+            if tomcats:
+                src.app_server_dir = tomcats[-1]  # newest version on top
+        sources.append(src)
+    return sources
+
+
 def _find_mysql_container() -> tuple[str, str] | None:
     """Return (container_name, root_password) for a running MySQL/MariaDB container, or None."""
     if not shutil.which("docker"):
@@ -491,6 +600,29 @@ def _print_db_section(title: str, db: DbResult) -> None:
         print(f"  {o.tables:<6} {o.schema}  (orphan)")
 
 
+def _print_portal_sources_section(
+    title: str, sources: list[PortalSource], root: str
+) -> None:
+    header = f"{title} [{root}]"
+    print(f"\n{header}")
+    print("-" * len(header))
+    if not sources:
+        print("  (none)")
+        return
+    for s in sources:
+        wt = " (worktree)" if s.is_worktree else ""
+        branch = s.branch or "?"
+        run = _warn(f"  ● RUNNING pid={s.running_pid}") if s.running_pid else ""
+        print(f"  {s.name}{wt}  @{branch}{run}")
+        if s.remote:
+            print(f"      repo:   {s.remote}")
+        if s.target_dir:
+            mark = "" if s.target_exists else "  (not built)"
+            print(f"      target: {s.target_dir}{mark}")
+            if s.app_server_dir:
+                print(f"      server: {os.path.basename(s.app_server_dir)}")
+
+
 def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
     print(f"\n{title}")
     print("-" * len(title))
@@ -515,7 +647,21 @@ def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
             print(f"          cwd: {h.cwd}")
 
 
-def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hit], list[Hit], list[Hit], DbResult]:
+def _link_running(sources: list[PortalSource], running: list[Hit]) -> None:
+    """Mark each source whose build target hosts a running portal/tomcat process.
+    A portal Hit's label/cwd is its catalina.base (``<bundle>/tomcat-X.Y.Z``)."""
+    for s in sources:
+        if not s.app_server_dir:
+            continue
+        target = os.path.normpath(s.app_server_dir)
+        for h in running:
+            base = os.path.normpath(h.label or h.cwd)
+            if base == target or base.startswith(target + os.sep):
+                s.running_pid = h.proc.pid
+                break
+
+
+def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hit], list[Hit], list[Hit], DbResult, list[PortalSource]]:
     if not _onepassword_running():
         print(_warn("! 1Password is not running — secrets/credentials may be unavailable."))
 
@@ -525,16 +671,21 @@ def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hi
     upgrades = [h for h in hits if h.kind == "upgrade"]
     ants = [h for h in hits if h.kind == "ant"]
 
+    sources = find_portal_sources(args.projects_dir)
+    _link_running(sources, portals + tomcats)
+
     _print_section("Portal (Tomcat) instances", portals, args.cwd)
     if args.all_tomcat or (not portals and tomcats):
         _print_section("Other Tomcat instances", tomcats, args.cwd)
     _print_section("Portal DB upgrades", upgrades, args.cwd)
     _print_section("Portal builds (ant)", ants, args.cwd)
 
+    _print_portal_sources_section("Portal source directories", sources, args.projects_dir)
+
     db = find_db_hits(cached=db_cache)
     _print_db_section("Liferay databases", db)
 
-    return 0, portals, tomcats, upgrades, ants, db
+    return 0, portals, tomcats, upgrades, ants, db, sources
 
 
 def _follow(args) -> int:
@@ -574,14 +725,20 @@ def main() -> int:
         type=float, default=3.0, metavar="SEC",
         help="refresh interval for --follow (default: 3.0s)",
     )
+    ap.add_argument(
+        "--projects-dir",
+        default=DEFAULT_PROJECTS_DIR, metavar="DIR",
+        help=f"where portal source checkouts live (default: {DEFAULT_PROJECTS_DIR})",
+    )
     args = ap.parse_args()
 
     if args.follow:
         return _follow(args)
 
-    _, portals, tomcats, upgrades, ants, db = _render(args)
+    _, portals, tomcats, upgrades, ants, db, sources = _render(args)
 
-    if not portals and not tomcats and not upgrades and not ants and not db.schemas:
+    if (not portals and not tomcats and not upgrades and not ants
+            and not db.schemas and not sources):
         print("\nNo Liferay-related processes found.", file=sys.stderr)
         return 1
     if not psutil.net_connections.__doc__ or not _listening_ports_by_pid():
