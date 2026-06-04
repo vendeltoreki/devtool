@@ -24,12 +24,46 @@ DEFAULT_MYSQL_SCHEMAS = {"information_schema", "mysql", "performance_schema", "s
 # Where portal source checkouts live. Override with --projects-dir.
 DEFAULT_PROJECTS_DIR = os.path.expanduser("~/dev/projects")
 
+# User configuration file (JSON). Override with --config.
+DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/liferay_ps/config.json")
+
 # Color only when writing to a real terminal and the user hasn't opted out.
 _USE_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
 
 
 def _warn(text: str) -> str:
     return f"\x1b[1;31m{text}\x1b[0m" if _USE_COLOR else text
+
+
+@dataclass
+class Config:
+    # Portal source directory names to skip entirely (matched against the checkout
+    # directory name under --projects-dir, e.g. "liferay-portal-7.0.x").
+    ignored_repos: set[str] = field(default_factory=set)
+
+
+def load_config(path: str) -> Config:
+    """Load configuration from a JSON file. A missing file yields an empty config;
+    a malformed one is reported to stderr but never aborts the run."""
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return Config()
+    except (OSError, ValueError) as e:
+        print(_warn(f"! ignoring unreadable config {path}: {e}"), file=sys.stderr)
+        return Config()
+    if not isinstance(data, dict):
+        print(_warn(f"! config {path}: top level must be a JSON object"), file=sys.stderr)
+        return Config()
+    ignored = data.get("ignored_repositories", [])
+    if not isinstance(ignored, list):
+        print(
+            _warn(f"! config {path}: 'ignored_repositories' must be a list"),
+            file=sys.stderr,
+        )
+        ignored = []
+    return Config(ignored_repos={str(r) for r in ignored})
 
 SCHEMA_COUNT_QUERY = (
     "SELECT TABLE_SCHEMA, COUNT(*), MAX(TABLE_NAME = 'Company') "
@@ -413,9 +447,13 @@ def _active_jdbc_schema(properties_path: str) -> str:
     return ""
 
 
-def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
+def find_portal_sources(
+    root: str = DEFAULT_PROJECTS_DIR, ignored_repos: set[str] | None = None
+) -> list[PortalSource]:
     """Discover portal source checkouts under ``root``: directories that are git
-    repos (or worktrees) and carry an ``app.server.properties`` marker."""
+    repos (or worktrees) and carry an ``app.server.properties`` marker. Directory
+    names in ``ignored_repos`` are skipped."""
+    ignored_repos = ignored_repos or set()
     user = os.environ.get("USER") or getpass.getuser()
     sources: list[PortalSource] = []
     try:
@@ -423,6 +461,8 @@ def find_portal_sources(root: str = DEFAULT_PROJECTS_DIR) -> list[PortalSource]:
     except OSError:
         return []
     for name in entries:
+        if name in ignored_repos:
+            continue
         path = os.path.join(root, name)
         git_marker = os.path.join(path, ".git")
         if not os.path.exists(git_marker):
@@ -862,7 +902,7 @@ def _render(args, db_cache: list | None = None) -> tuple[int, list[Hit], list[Hi
     upgrades = [h for h in hits if h.kind == "upgrade"]
     ants = [h for h in hits if h.kind == "ant"]
 
-    sources = find_portal_sources(args.projects_dir)
+    sources = find_portal_sources(args.projects_dir, args.config.ignored_repos)
     db = find_db_hits(cached=db_cache)
 
     _print_portals_grouped(sources, portals, tomcats, upgrades, ants, db, args)
@@ -912,7 +952,13 @@ def main() -> int:
         default=DEFAULT_PROJECTS_DIR, metavar="DIR",
         help=f"where portal source checkouts live (default: {DEFAULT_PROJECTS_DIR})",
     )
+    ap.add_argument(
+        "--config",
+        dest="config_path", default=DEFAULT_CONFIG_PATH, metavar="FILE",
+        help=f"JSON config file (default: {DEFAULT_CONFIG_PATH})",
+    )
     args = ap.parse_args()
+    args.config = load_config(args.config_path)
 
     if args.follow:
         return _follow(args)
