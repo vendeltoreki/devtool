@@ -690,10 +690,6 @@ def _print_db_section(title: str, db: DbResult) -> None:
         print(f"  {o.tables:<6} {o.schema}  (orphan)")
 
 
-# Sources whose last commit is older than this are hidden as inactive.
-_SOURCE_MAX_AGE_DAYS = 30
-
-
 def _print_portal_group(
     s: PortalSource,
     server: Hit | None,
@@ -817,31 +813,15 @@ def _print_portals_grouped(
         used_schemas.add(main.schema)
         used_schemas.update(k.schema for k in kids)
 
-    # Show sources committed to in the last 30 days, or any with live activity.
-    cutoff = time.time() - _SOURCE_MAX_AGE_DAYS * 86400
-    shown: list[PortalSource] = []
-    hidden = 0
-    for s in sources:
-        live = (s.path in server_by_source or s.path in builds_by_source
-                or s.path in upgrades_by_source)
-        recent = s.last_commit_epoch is None or s.last_commit_epoch >= cutoff
-        if recent or live:
-            shown.append(s)
-        else:
-            hidden += 1
-
     print("\nPortals")
     print("=======")
-    if not shown:
-        print("  (no active portal sources)")
-    for s in shown:
+    if not sources:
+        print("  (no portal sources)")
+    for s in sources:
         _print_portal_group(
             s, server_by_source.get(s.path), builds_by_source.get(s.path, []),
             upgrades_by_source.get(s.path, []), db_by_source.get(s.path, []), args.cwd,
         )
-    if hidden:
-        print(f"\n  ({hidden} inactive source{'s' if hidden != 1 else ''} hidden, "
-              f"no commits in {_SOURCE_MAX_AGE_DAYS}+ days)")
 
     # Trailing sections: anything that didn't map to a source.
     orphan_portals = [h for h in portals if id(h) not in used_hits]
