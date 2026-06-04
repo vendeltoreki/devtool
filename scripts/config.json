@@ -1,0 +1,8 @@
+{
+  "ignored_repositories": [
+    "liferay-portal-7.0.x",
+    "liferay-portal-7.1.x",
+    "liferay-portal-7.2.x",
+    "liferay-portal-7.3.x"
+  ]
+}

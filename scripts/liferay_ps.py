@@ -24,8 +24,14 @@ DEFAULT_MYSQL_SCHEMAS = {"information_schema", "mysql", "performance_schema", "s
 # Where portal source checkouts live. Override with --projects-dir.
 DEFAULT_PROJECTS_DIR = os.path.expanduser("~/dev/projects")
 
-# User configuration file (JSON). Override with --config.
-DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/liferay_ps/config.json")
+# Configuration file (JSON). The per-user file wins if it exists; otherwise we
+# fall back to the default shipped alongside this script. Override with --config.
+USER_CONFIG_PATH = os.path.expanduser("~/.config/liferay_ps/config.json")
+BUNDLED_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
+def default_config_path() -> str:
+    return USER_CONFIG_PATH if os.path.isfile(USER_CONFIG_PATH) else BUNDLED_CONFIG_PATH
 
 # Color only when writing to a real terminal and the user hasn't opted out.
 _USE_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
@@ -954,11 +960,12 @@ def main() -> int:
     )
     ap.add_argument(
         "--config",
-        dest="config_path", default=DEFAULT_CONFIG_PATH, metavar="FILE",
-        help=f"JSON config file (default: {DEFAULT_CONFIG_PATH})",
+        dest="config_path", default=None, metavar="FILE",
+        help=f"JSON config file (default: {USER_CONFIG_PATH}, "
+             f"falling back to the bundled {BUNDLED_CONFIG_PATH})",
     )
     args = ap.parse_args()
-    args.config = load_config(args.config_path)
+    args.config = load_config(args.config_path or default_config_path())
 
     if args.follow:
         return _follow(args)
