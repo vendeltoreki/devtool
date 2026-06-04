@@ -731,11 +731,11 @@ def _print_portal_group(
 
     if db_schemas:
         main = db_schemas[0]
-        print(f"  database: {main.tables} tables  {main.schema}")
+        print(f"  DB:       {main.tables} tables  {main.schema}")
         for kid in db_schemas[1:]:
             print(f"              └ {kid.tables} tables  {kid.schema}")
     elif s.db_schema_name:
-        print(f"  database: {s.db_schema_name}  (not created yet)")
+        print(f"  DB:       {s.db_schema_name}  (not created yet)")
 
 
 def _print_portals_grouped(
@@ -843,7 +843,7 @@ def _print_portals_grouped(
         source=db.source, error=db.error,
         schemas=[sc for sc in db.schemas if sc.schema not in used_schemas],
     )
-    title = "Other databases" if used_schemas else "Liferay databases"
+    title = "Other DBs" if used_schemas else "Liferay DBs"
     if leftover.schemas or leftover.error or not used_schemas:
         _print_db_section(title, leftover)
 
