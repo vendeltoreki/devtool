@@ -41,6 +41,12 @@ def _warn(text: str) -> str:
     return f"\x1b[1;31m{text}\x1b[0m" if _USE_COLOR else text
 
 
+def _building(text: str) -> str:
+    """Highlight an in-progress build (bold yellow) so a running `ant all`
+    stands out from finished/idle sources."""
+    return f"\x1b[1;33m{text}\x1b[0m" if _USE_COLOR else text
+
+
 @dataclass
 class Config:
     # Portal source directory names to skip entirely (matched against the checkout
@@ -71,10 +77,14 @@ def load_config(path: str) -> Config:
         ignored = []
     return Config(ignored_repos={str(r) for r in ignored})
 
+# LEFT JOIN from schemata so schemas with no tables still show up (COUNT 0).
 SCHEMA_COUNT_QUERY = (
-    "SELECT TABLE_SCHEMA, COUNT(*), MAX(TABLE_NAME = 'Company') "
-    "FROM information_schema.tables "
-    "GROUP BY TABLE_SCHEMA ORDER BY TABLE_SCHEMA;"
+    "SELECT s.SCHEMA_NAME, COUNT(t.TABLE_NAME), "
+    "MAX(t.TABLE_NAME = 'Company') "
+    "FROM information_schema.schemata s "
+    "LEFT JOIN information_schema.tables t "
+    "ON t.TABLE_SCHEMA = s.SCHEMA_NAME "
+    "GROUP BY s.SCHEMA_NAME ORDER BY s.SCHEMA_NAME;"
 )
 
 # Liferay partition schemas: "lpartition_<companyId>", with companyId being numeric.
@@ -345,12 +355,14 @@ def _uptime(p: psutil.Process) -> str:
         return "?"
     days, rem = divmod(secs, 86400)
     hours, rem = divmod(rem, 3600)
-    minutes, _ = divmod(rem, 60)
+    minutes, seconds = divmod(rem, 60)
     if days:
-        return f"{days}d{hours:02d}h"
+        return f"{days}d{hours:02d}h{minutes:02d}m{seconds:02d}s"
     if hours:
-        return f"{hours}h{minutes:02d}m"
-    return f"{minutes}m"
+        return f"{hours}h{minutes:02d}m{seconds:02d}s"
+    if minutes:
+        return f"{minutes}m{seconds:02d}s"
+    return f"{seconds}s"
 
 
 def _onepassword_running() -> bool:
@@ -724,7 +736,7 @@ def _print_portal_group(
             print(f"            {_warn('! ' + p)}")
     for h in builds:
         descr, _ = _proc_descr(h)
-        print(f"  building: {descr}  {h.label}")
+        print(_building(f"  building: {descr}  {h.label}"))
     for h in upgrades:
         descr, _ = _proc_descr(h)
         print(f"  upgrade:  {descr}")
@@ -871,7 +883,8 @@ def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
         return
     for h in hits:
         descr, problems = _proc_descr(h)
-        print(f"  {descr}  {h.label}")
+        line = f"  {descr}  {h.label}"
+        print(_building(line) if h.kind == "ant" else line)
         for problem in problems:
             print(f"          {_warn('! ' + problem)}")
         if show_cwd and h.cwd and h.cwd != h.label:
