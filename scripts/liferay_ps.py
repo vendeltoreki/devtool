@@ -107,6 +107,9 @@ class Hit:
     ports: list[int] = field(default_factory=list)
     cwd: str = ""
     by_claude: bool = False  # launched from within a Claude Code session
+    # For kind == "upgrade": which leg of the upgrade this process is —
+    # "wrapper" (bash script), "launcher" (-jar client), or "worker" (forked JVM).
+    role: str = ""
 
 
 @dataclass
@@ -202,6 +205,27 @@ def _upgrade_bundle(cmd: list[str]) -> str | None:
     return None
 
 
+def _bundle_from_cwd(cwd: str) -> str:
+    """Derive the bundle root from an upgrade process's cwd. The wrapper script and
+    launcher jar both run from ``<bundle>/tools/portal-tools-db-upgrade-client`` but
+    carry no ``-D...portal.dir`` to read, so recover the bundle by stripping at the
+    ``/tools/`` segment."""
+    idx = cwd.find("/tools/")
+    return cwd[:idx] if idx > 0 else ""
+
+
+def _upgrade_role(cmd: list[str], joined: str, is_sh: bool) -> str:
+    """Which leg of a single upgrade this process is: the bash ``wrapper``, the
+    ``-jar`` ``launcher``, or the forked ``worker`` JVM that does the real work."""
+    if is_sh:
+        return "wrapper"
+    if "DBUpgraderLauncher" in joined or any(
+        a.startswith("-Dliferay.shielded.container.lib.portal.dir=") for a in cmd
+    ):
+        return "worker"
+    return "launcher"
+
+
 def _classify(p: psutil.Process) -> Hit | None:
     cmd = _cmdline(p)
     if not cmd:
@@ -228,9 +252,13 @@ def _classify(p: psutil.Process) -> Hit | None:
         os.path.basename(a).startswith("db_upgrade") and a.endswith(".sh") for a in cmd
     )
     if is_upgrade_java or is_upgrade_sh:
-        bundle = _upgrade_bundle(cmd) or _cwd(p)
+        cwd = _cwd(p)
+        # All three legs share one bundle; resolve it the same way for each so they
+        # group together and render with an identical target.
+        bundle = _upgrade_bundle(cmd) or _bundle_from_cwd(cwd) or cwd
         label = bundle or "db-upgrade"
-        return Hit(proc=p, kind="upgrade", label=label, cwd=_cwd(p))
+        role = _upgrade_role(cmd, joined, is_upgrade_sh)
+        return Hit(proc=p, kind="upgrade", label=label, cwd=cwd, role=role)
 
     # Ant build: org.apache.tools.ant.launch.Launcher invoked by the `ant` wrapper.
     if "org.apache.tools.ant.launch.Launcher" in joined or (
@@ -419,9 +447,11 @@ def find_hits() -> list[Hit]:
         if hit.kind in ("ant", "portal"):
             hit.by_claude = _launched_by_claude(p)
         hits.append(hit)
-    # Portal first, then tomcat, upgrade, ant; within each, sort by pid for stability.
+    # Portal first, then tomcat, upgrade, ant. Within an upgrade, order the legs
+    # wrapper → launcher → worker; otherwise fall back to pid for stability.
     order = {"portal": 0, "tomcat": 1, "upgrade": 2, "ant": 3}
-    hits.sort(key=lambda h: (order.get(h.kind, 9), h.proc.pid))
+    role_order = {"wrapper": 0, "launcher": 1, "worker": 2}
+    hits.sort(key=lambda h: (order.get(h.kind, 9), role_order.get(h.role, 9), h.proc.pid))
     return hits
 
 
@@ -768,7 +798,8 @@ def _print_portal_group(
         print(_building(f"  building: {descr}  {h.label}{by}"))
     for h in upgrades:
         descr, _ = _proc_descr(h)
-        print(f"  upgrade:  {descr}")
+        role = f"{h.role:<8} " if h.role else ""
+        print(f"  upgrade:  {role}{descr}")
 
     if db_schemas:
         main = db_schemas[0]
@@ -913,7 +944,8 @@ def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
     for h in hits:
         descr, problems = _proc_descr(h)
         by = f"  {_claude('[Claude]')}" if h.by_claude else ""
-        line = f"  {descr}  {h.label}{by}"
+        role = f"{h.role:<8} " if h.role else ""
+        line = f"  {role}{descr}  {h.label}{by}"
         print(_building(line) if h.kind == "ant" else line)
         for problem in problems:
             print(f"          {_warn('! ' + problem)}")
