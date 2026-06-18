@@ -47,6 +47,11 @@ def _building(text: str) -> str:
     return f"\x1b[1;33m{text}\x1b[0m" if _USE_COLOR else text
 
 
+def _claude(text: str) -> str:
+    """Tag a process Claude Code launched (orange)."""
+    return f"\x1b[38;5;208m{text}\x1b[0m" if _USE_COLOR else text
+
+
 @dataclass
 class Config:
     # Portal source directory names to skip entirely (matched against the checkout
@@ -101,6 +106,7 @@ class Hit:
     label: str
     ports: list[int] = field(default_factory=list)
     cwd: str = ""
+    by_claude: bool = False  # launched from within a Claude Code session
 
 
 @dataclass
@@ -156,6 +162,25 @@ def _cwd(p: psutil.Process) -> str:
         return p.cwd() or ""
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return ""
+
+
+def _launched_by_claude(p: psutil.Process) -> bool:
+    """True if any ancestor process is the Claude Code CLI (named ``claude``).
+
+    Claude Code runs commands as bash subprocesses under its own ``claude``
+    process, so a build it kicked off carries ``claude`` somewhere up its
+    parent chain."""
+    seen: set[int] = set()
+    try:
+        cur = p.parent()
+        while cur is not None and cur.pid not in seen:
+            seen.add(cur.pid)
+            if (cur.name() or "").lower() == "claude":
+                return True
+            cur = cur.parent()
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return False
+    return False
 
 
 def _catalina_base(cmd: list[str]) -> str | None:
@@ -391,6 +416,8 @@ def find_hits() -> list[Hit]:
         if hit is None:
             continue
         hit.ports = ports_by_pid.get(p.pid, [])
+        if hit.kind in ("ant", "portal"):
+            hit.by_claude = _launched_by_claude(p)
         hits.append(hit)
     # Portal first, then tomcat, upgrade, ant; within each, sort by pid for stability.
     order = {"portal": 0, "tomcat": 1, "upgrade": 2, "ant": 3}
@@ -731,12 +758,14 @@ def _print_portal_group(
 
     if server:
         descr, problems = _proc_descr(server)
-        print(f"  portal:   {descr}")
+        by = f"  {_claude('[Claude]')}" if server.by_claude else ""
+        print(f"  portal:   {descr}{by}")
         for p in problems:
             print(f"            {_warn('! ' + p)}")
     for h in builds:
         descr, _ = _proc_descr(h)
-        print(_building(f"  building: {descr}  {h.label}"))
+        by = f"  {_claude('[Claude]')}" if h.by_claude else ""
+        print(_building(f"  building: {descr}  {h.label}{by}"))
     for h in upgrades:
         descr, _ = _proc_descr(h)
         print(f"  upgrade:  {descr}")
@@ -883,7 +912,8 @@ def _print_section(title: str, hits: list[Hit], show_cwd: bool) -> None:
         return
     for h in hits:
         descr, problems = _proc_descr(h)
-        line = f"  {descr}  {h.label}"
+        by = f"  {_claude('[Claude]')}" if h.by_claude else ""
+        line = f"  {descr}  {h.label}{by}"
         print(_building(line) if h.kind == "ant" else line)
         for problem in problems:
             print(f"          {_warn('! ' + problem)}")
