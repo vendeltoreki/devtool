@@ -463,9 +463,8 @@ select {
 			line = line.substring(12);
 		}
 
-		if (line.startsWith('liferay-1_1   | ')) {
-			line = line.substring(16);
-		}
+		// Strip docker-compose style container prefixes, e.g. "lec-123456-liferay         | "
+		line = line.replace(/^[a-zA-Z0-9_\-\.]+\s*\| /, "");
 
 		line = line.replace(/\</g, "&lt;");
 		line = line.replace(/\>/g, "&gt;");
