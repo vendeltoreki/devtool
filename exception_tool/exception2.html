@@ -61,6 +61,10 @@ select {
 	color: #44bb44;
 }
 
+.grv {
+	color: #cc7700;
+}
+
 .hib {
 	color: #88cc88;
 }
@@ -547,6 +551,10 @@ select {
 		
 		if (!res.startsWith("\tat ")) {
 			res = res.replace(/^\s*at\s/, "\tat ");
+
+			if (!res.startsWith("\tat ")) {
+				res = "\tat "+res.replace(/^\t*/, "");
+			}
 		}
 		
 		if (res.includes('.groovy:')) {
@@ -605,15 +613,20 @@ select {
 		res = res.replace(/ com\.ibm\.db2\./g, " <span class=\"sql\">com.ibm.db2</span>.");
 		res = res.replace(/ org\.hsqldb\./g, " <span class=\"sql\">org.hsqldb</span>.");
 		res = res.replace(/ org\.mariadb\./g, " <span class=\"sql\">org.mariadb</span>.");
-		res = res.replace(/ org\.postgresql\./g, "< span class=\"sql\">org.postgresql</span>.");
+		res = res.replace(/ org\.postgresql\./g, " <span class=\"sql\">org.postgresql</span>.");
 		res = res.replace(/ oracle\.jdbc\.driver\./g, " <span class=\"sql\">oracle.jdbc.driver</span>.");
 		
 		res = res.replace(/ org\.hibernate\./g, " <span class=\"hib\">org.hibernate</span>.");
 
+		res = res.replace(/ co\.elastic\./g, " <span class=\"sch\">co.elastic</span>.");
 		res = res.replace(/ org\.elasticsearch\./g, " <span class=\"sch\">org.elasticsearch</span>.");
 		res = res.replace(/\.elasticsearch7\./g, ".<span class=\"sch\">elasticsearch7</span>.");
 
 		res = res.replace(/poshi\.runner\./g, "<span class=\"tst\">poshi.runner</span>.");
+
+		res = res.replace(/ org\.codehaus\.groovy\./g, " <span class=\"grv\">org.codehaus.groovy</span>.");
+		res = res.replace(/ groovy\.lang\./g, " <span class=\"grv\">groovy.lang</span>.");
+		res = res.replace(/\.ServerScriptingUtil\._executeGroovyScript\(/g, ".<span class=\"grv\">ServerScriptingUtil</span>.<span class=\"grv\">_executeGroovyScript</span>(");
 
 		res = res.replace(/ freemarker\.([a-z0-9]{1,20})\./g, " <span class=\"ftl\">freemarker.$1</span>.");
 
@@ -821,7 +834,7 @@ select {
 	}
 	
 	function isStackTraceLine(line) {
-		return line.match(/^\s*at\s/);
+		return line.match(/^\s*at\s/) || line.match(/^\t.*\(.*\)$/);
 	}
 	
 	function isLogLine(line) {
@@ -940,6 +953,7 @@ var nonCustomLibraries = [
 ">com.liferay<",
 " com.amazonaws.",
 " com.ctc.wstx.",
+" com.dynatrace.",
 " com.fasterxml.",
 " com.google.",
 " com.ibm.",
@@ -950,6 +964,7 @@ var nonCustomLibraries = [
 " com.thoughtworks.",
 " com.valamis.",
 " com.zaxxer.",
+" co.elastic.",
 " de.schlichtherle.",
 " freemarker.",
 " graphql.kickstart.",
