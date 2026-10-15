@@ -7,7 +7,7 @@ from datetime import datetime
 import difflib
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import escape as html_escape
 
 def get_current_branch():
@@ -40,17 +40,19 @@ def get_merge_base_sha(branch):
     sys.exit(1)
 
 def get_commit_details(sha1, sha2):
+    # %B is the full message; -z separates commits with NUL so bodies spanning
+    # several lines stay parseable
     cmd = [
-        'git', 'log', '--pretty=format:%H|%an|%al|%ad|%cn|%cl|%cd|%s', '--date=iso', '--reverse', f'{sha1}..{sha2}'
+        'git', 'log', '-z', '--pretty=format:%H|%an|%al|%ad|%cn|%cl|%cd|%B', '--date=iso', '--reverse', f'{sha1}..{sha2}'
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print("Error getting commit details:", result.stderr)
         sys.exit(1)
     commits = []
-    for line in result.stdout.strip().split('\n'):
-        if line:
-            parts = line.split('|', 7)
+    for record in result.stdout.split('\0'):
+        if record.strip():
+            parts = record.split('|', 7)
             if len(parts) == 8:
                 commits.append({
                     'hash': parts[0],
@@ -60,7 +62,7 @@ def get_commit_details(sha1, sha2):
                     'committer': parts[4],
                     'committerId': parts[5],
                     'commitDate': parts[6],
-                    'message': parts[7]
+                    'message': parts[7].strip()
                 })
     return commits
 
@@ -148,6 +150,133 @@ def get_last_commits_for_file(file_path, sha1, max_count=5):
                 })
     return commits
 
+def map_commits_by_file(commits):
+    """Path -> the commits of this range that touched it, newest first.
+
+    Built from the file lists already populated on each commit, so the file
+    history costs no extra git calls. A rename is recorded under both names.
+    """
+    by_file = {}
+    for c in commits:
+        for fc in c.get('files', []):
+            for path in (fc.get('path'), fc.get('old_path')):
+                if path:
+                    by_file.setdefault(path, []).append(c)
+    for entries in by_file.values():
+        # commits arrive oldest first; git log order is newest first
+        entries.reverse()
+    return by_file
+
+def count_other_commits(commits_by_file, file_change):
+    """How many other commits of this range touched the same file.
+
+    A rename is counted across both names, so moving a file does not split its
+    history into two separate ones.
+    """
+    hashes = set()
+    for path in (file_change.get('path'), file_change.get('old_path')):
+        if path:
+            hashes.update(c['hash'] for c in commits_by_file.get(path, []))
+    return max(len(hashes) - 1, 0)
+
+def render_history_row(file_commit, row_class=''):
+    short_hash = file_commit['hash'][:8]
+    github_url = f"https://github.com/liferay/liferay-portal/commit/{file_commit['hash']}"
+    # the commits of this range carry the whole message; the table shows subjects
+    subject = file_commit['message'].splitlines()[0] if file_commit['message'] else ''
+    linked_message = linkify_ticket(html_escape(subject))
+    return (
+        f"<tr class='{row_class}'>"
+        f"<td><a href=\"{github_url}\" style=\"color:#ffd700;font-weight:bold;\" target=\"_blank\">{short_hash}</a></td>"
+        f"<td>{file_commit['author']}</td><td>{file_commit['date']}</td><td>{linked_message}</td></tr>"
+    )
+
+CODEOWNERS_PATH = '.github/CODEOWNERS'
+
+def compile_codeowners_pattern(pattern):
+    """Translate a CODEOWNERS path pattern into a regex matching whole paths."""
+    body = pattern.lstrip('/')
+    directory_only = body.endswith('/')
+    body = body.rstrip('/')
+    regex = ''
+    index = 0
+    while index < len(body):
+        if body.startswith('**', index):
+            regex += '.*'
+            index += 2
+            continue
+        char = body[index]
+        if char == '*':
+            regex += '[^/]*'
+        elif char == '?':
+            regex += '[^/]'
+        else:
+            regex += re.escape(char)
+        index += 1
+    # a pattern without a slash is not anchored to the repository root
+    if '/' not in body:
+        regex = '(.*/)?' + regex
+    # a trailing slash matches only what is inside the directory
+    return re.compile(regex + ('/.*$' if directory_only else '(/.*)?$'))
+
+def load_codeowners(sha2):
+    """Rules from .github/CODEOWNERS at the top of the range, in file order.
+
+    A rule with no owners clears ownership, and the last matching rule wins,
+    which is how GitHub resolves it.
+    """
+    cmd = ['git', 'show', f'{sha2}:{CODEOWNERS_PATH}']
+    result = subprocess.run(cmd, capture_output=True, text=True, errors='replace')
+    if result.returncode != 0:
+        return []
+    rules = []
+    for line in result.stdout.split('\n'):
+        line = line.split('#', 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        rules.append((parts[0], compile_codeowners_pattern(parts[0]), parts[1:]))
+    return rules
+
+def find_code_owner(codeowners, file_path):
+    """The (pattern, owners) of the last rule matching file_path, or None."""
+    found = None
+    for pattern, regex, owners in codeowners:
+        if regex.match(file_path):
+            found = (pattern, owners)
+    return found
+
+def render_code_owner(codeowners, file_path):
+    if not codeowners:
+        return ''
+    found = find_code_owner(codeowners, file_path)
+    if found is None:
+        return "<p class='codeowner'>No CODEOWNERS entry for this file.</p>"
+    pattern, owners = found
+    if owners:
+        owner_html = " ".join(
+            f"<span class='co-owner'>{html_escape(o)}</span>" for o in owners
+        )
+    else:
+        owner_html = "<span class='co-none'>(unassigned)</span>"
+    return (
+        f"<p class='codeowner'>Project: <span class='co-project'>{html_escape(pattern)}</span>"
+        f" &middot; Owner: {owner_html}</p>"
+    )
+
+# A "test" token delimited by / - _ or . , plus the shapes that token misses.
+# Case matters: "Latest.java" and "Attestation.java" must not count as tests.
+TEST_FILE_PATTERN = re.compile(
+    r'(^|[/\-_.])tests?([/\-_.]|$)'
+    r'|(^|/)(testIntegration|testFunctional|__tests__)/'
+    r'|(Test|Tests|TestCase|TestUtil|TestRule)\.java$'
+    r'|\.(testcase|tftest\.hcl)$'
+    r'|[._-]spec\.[jt]sx?$'
+)
+
+def is_test_file(file_path):
+    return bool(file_path) and TEST_FILE_PATTERN.search(file_path) is not None
+
 def should_skip_history(file_path):
     # pattern = r'^modules/apps/.*$'
     pattern = r'^modules/apps/portal-language/portal-language-lang/src/main/resources/content/Language_.*\.properties$'
@@ -166,8 +295,7 @@ def extract_tickets_from_commits(commits):
     ticket_pattern = r'(LP[DS]-\d+)'
     ticket_counts = {}
     for c in commits:
-        found = re.findall(ticket_pattern, c['message'])
-        for ticket in found:
+        for ticket in set(re.findall(ticket_pattern, c['message'])):
             ticket_counts[ticket] = ticket_counts.get(ticket, 0) + 1
     return ticket_counts
 
@@ -194,6 +322,59 @@ a {
     border-radius: 4px;
     font-size: 0.85em;
     font-weight: bold;
+}
+.codeowner {
+    color: #888888;
+    margin: 2px 0 6px 0;
+}
+.co-project {
+    color: #9ecbff;
+}
+.co-owner {
+    color: #d2a8ff;
+    font-weight: bold;
+}
+.co-none {
+    color: #c9a227;
+    font-style: italic;
+}
+li.test-file {
+    background-color: #13301e;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+h3.test-file {
+    display: inline-block;
+    background-color: #13301e;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+.multi-commit {
+    color: #c9a227;
+    margin-left: 4px;
+}
+.hist-group td {
+    background-color: #241d1d;
+    color: #dddddd;
+    font-weight: bold;
+}
+.hist-group-branch td {
+    border-left: 3px solid #ffd700;
+}
+.hist-branch td {
+    background-color: rgba(255, 215, 0, 0.06);
+}
+.hist-none td {
+    color: #6b6b6b;
+    font-style: italic;
+}
+.file-count {
+    color: #777777;
+    margin-bottom: 4px;
+}
+.commit-msg {
+    white-space: pre-wrap;
+    max-width: 70em;
 }
 .legend {
     color: #888888;
@@ -285,6 +466,10 @@ table.blame tr.bl-skiprow td {
         f.write(css_content)
     return css_path
 
+# Both the @Generated annotation and the javadoc @generated tag, the latter
+# being what service builder leaves in the persistence tests
+GENERATED_MARKER = re.compile(r'@generated\b', re.IGNORECASE)
+
 def is_generated_java(file_path, sha2):
     # Only consider .java files
     if not file_path.endswith('.java'):
@@ -296,9 +481,20 @@ def is_generated_java(file_path, sha2):
         # file might be deleted/renamed in this range — treat as not generated
         return False
     content = result.stdout
-    return '@Generated' in content
+    return GENERATED_MARKER.search(content) is not None
 
-BLAME_MAX_LINES = 4000
+def collect_generated_files(files, sha2):
+    """Java files marked as generated at the top of the range.
+
+    Neither commit history nor a blame diff is shown for them, so this is
+    resolved once and shared by both.
+    """
+    java_files = [f for f in files if f.endswith('.java')]
+    with ThreadPoolExecutor(max_workers=BLAME_WORKERS) as executor:
+        flags = executor.map(lambda file_path: is_generated_java(file_path, sha2), java_files)
+        return {file_path for file_path, flag in zip(java_files, flags) if flag}
+
+BLAME_MAX_LINES = 5000
 BLAME_CONTEXT = 3
 # Blame dominates report time on repositories with a long history, so run as
 # many as the machine can take
@@ -360,16 +556,29 @@ def get_line_count(rev, file_path):
         return None
     return result.stdout.count('\n')
 
-def collect_blames(files, sha1, sha2):
+def print_blame_progress(done, total, file_path):
+    """Report blame progress; a terminal gets a single updating line."""
+    line = f"{done:0{len(str(total))}d}/{total} {file_path}"
+    if sys.stdout.isatty():
+        # \033[2K clears the previous, possibly longer, path
+        sys.stdout.write(f"\r\033[2K{line}")
+        sys.stdout.flush()
+    else:
+        print(line, flush=True)
+
+def collect_blames(files, sha1, sha2, generated_files=frozenset()):
     """Blame every file at both ends of the range, one git process per side.
 
     Maps each file to a (base_blame, head_blame) tuple, or to a string saying
-    why no diff is rendered for it.
+    why no diff is rendered for it. Files whose history is not shown, generated
+    ones included, are not blamed at all.
     """
     blames = {}
     candidates = []
     for file_path in files:
-        if should_skip_history(file_path):
+        if file_path in generated_files:
+            blames[file_path] = "Blame diff not shown for generated files."
+        elif should_skip_history(file_path):
             blames[file_path] = "Blame diff not shown for this file."
         else:
             candidates.append(file_path)
@@ -396,10 +605,26 @@ def collect_blames(files, sha1, sha2):
         if right_count is not None:
             jobs.append((file_path, 1, sha2))
 
+    # a file is done once both of its sides came back
+    pending_sides = {}
+    for file_path, _, _ in jobs:
+        pending_sides[file_path] = pending_sides.get(file_path, 0) + 1
+    total = len(pending_sides)
+    done = 0
     with ThreadPoolExecutor(max_workers=BLAME_WORKERS) as executor:
-        results = executor.map(lambda job: get_blame_lines(job[2], job[0]), jobs)
-        for (file_path, side, _), lines in zip(jobs, results):
-            blames[file_path][side] = lines
+        futures = {
+            executor.submit(get_blame_lines, rev, file_path): (file_path, side)
+            for file_path, side, rev in jobs
+        }
+        for future in as_completed(futures):
+            file_path, side = futures[future]
+            blames[file_path][side] = future.result()
+            pending_sides[file_path] -= 1
+            if pending_sides[file_path] == 0:
+                done += 1
+                print_blame_progress(done, total, file_path)
+    if total and sys.stdout.isatty():
+        print()
 
     for file_path, entry in blames.items():
         if isinstance(entry, list):
@@ -579,8 +804,10 @@ def render_side_by_side_blame(file_path, left, right, sha1, sha2, pr_hashes):
     html_parts.append("</table></div></details>")
     return "".join(html_parts)
 
-def generate_html_report(commits, files, sha1, sha2, report_path, css_filename, blames=None):
+def generate_html_report(commits, files, sha1, sha2, report_path, css_filename, blames=None, generated_files=frozenset()):
     pr_hashes = {c['hash'] for c in commits}
+    commits_by_file = map_commits_by_file(commits)
+    codeowners = load_codeowners(sha2)
     html = []
     html.append(f"<html><head><title>PR Report</title><link rel='stylesheet' type='text/css' href='{css_filename}'></head><body>")
     html.append(f"<h1>PR Report: <code>{branch if branch else '(not set)'}</code> -- {sha1}..{sha2}</h1>")
@@ -617,11 +844,24 @@ def generate_html_report(commits, files, sha1, sha2, report_path, css_filename, 
             else:
                 badge = f"<span style='color:#999999;font-weight:bold;'>[{status}]</span>"
                 path_display = fc.get('path', '') or fc.get('old_path', '')
-            list_items.append(f"<li>{badge} {path_display}</li>")
-        linked_message = linkify_ticket(c['message'])
+            test_class = (
+                " class='test-file'"
+                if is_test_file(fc.get('path')) or is_test_file(fc.get('old_path'))
+                else ''
+            )
+            other_commits = count_other_commits(commits_by_file, fc)
+            also_label = (
+                f" <span class='multi-commit'>+{other_commits}C</span>"
+                if other_commits else ''
+            )
+            list_items.append(f"<li{test_class}>{badge} {path_display}{also_label}</li>")
+        file_count = len(files_changed)
+        file_count_label = f"{file_count} file{'' if file_count == 1 else 's'}"
+        linked_message = linkify_ticket(html_escape(c['message']))
         html.append(
-            f"<tr><td>{c['hash'][:8]}</td><td><span hint='{c['authorId']}'>{c['author']}</span></td><td>{c['date']}</td><td><span hint='{c['committerId']}'>{c['committer']}</span></td><td>{c['commitDate']}</td><td>{linked_message}</td>"
-            "<td><ul>" + "".join(list_items) + "</ul></td></tr>"
+            f"<tr><td>{c['hash'][:8]}</td><td><span hint='{c['authorId']}'>{c['author']}</span></td><td>{c['date']}</td><td><span hint='{c['committerId']}'>{c['committer']}</span></td><td>{c['commitDate']}</td><td><div class='commit-msg'>{linked_message}</div></td>"
+            f"<td><div class='file-count'>{file_count_label}</div>"
+            "<ul>" + "".join(list_items) + "</ul></td></tr>"
         )
     html.append("</table>")
     html.append(f"<h2>Changed Files ({len(files)})</h2>")
@@ -635,26 +875,42 @@ def generate_html_report(commits, files, sha1, sha2, report_path, css_filename, 
             "range. Hover a hash for author, date and subject.</p>"
         )
     for f in files:
-        generated = is_generated_java(f, sha2)
+        generated = f in generated_files
+        heading_class = " class='test-file'" if is_test_file(f) else ''
         if generated:
-            html.append(f"<h3>{f} <span class='generated'>(generated)</span></h3>")
+            html.append(
+                f"<h3{heading_class}>{f} <span class='generated'>(generated)</span></h3>"
+            )
         else:
-            html.append(f"<h3>{f}</h3>")
+            html.append(f"<h3{heading_class}>{f}</h3>")
+        html.append(render_code_owner(codeowners, f))
 
         # Skip history either if matches skip pattern or is a generated java file
         if should_skip_history(f) or generated:
             html.append("<p>Commit history not shown for this file.</p>")
         else:
+            branch_commits = commits_by_file.get(f, [])
             file_commits = get_last_commits_for_file(f, sha1)
-            if file_commits:
+            if branch_commits or file_commits:
                 html.append("<table border='1'><tr><th>Hash</th><th>Author</th><th>Date</th><th>Message</th></tr>")
-                for fc in file_commits:
-                    linked_message = linkify_ticket(fc['message'])
-                    short_hash = fc['hash'][:8]
-                    github_url = f"https://github.com/liferay/liferay-portal/commit/{fc['hash']}"
+                if branch_commits:
                     html.append(
-                        f"<tr><td><a href=\"{github_url}\" style=\"color:#ffd700;font-weight:bold;\" target=\"_blank\">{short_hash}</a></td>"
-                        f"<td>{fc['author']}</td><td>{fc['date']}</td><td>{linked_message}</td></tr>"
+                        f"<tr class='hist-group hist-group-branch'><td colspan='4'>"
+                        f"In this branch ({len(branch_commits)})</td></tr>"
+                    )
+                    for fc in branch_commits:
+                        html.append(render_history_row(fc, 'hist-branch'))
+                html.append(
+                    f"<tr class='hist-group'><td colspan='4'>Before this branch "
+                    f"({len(file_commits)})</td></tr>"
+                )
+                if file_commits:
+                    for fc in file_commits:
+                        html.append(render_history_row(fc))
+                else:
+                    html.append(
+                        "<tr class='hist-none'><td colspan='4'>"
+                        "No earlier commits for this file.</td></tr>"
                     )
                 html.append("</table>")
             else:
@@ -701,10 +957,15 @@ if __name__ == "__main__":
     print(f"Commits: {len(commits)}")
     print(f"Files modified: {len(files)}")
 
+    generated_files = collect_generated_files(files, sha2)
+    if generated_files:
+        print(f"Generated files (no history, no diff): {len(generated_files)}")
+
     blames = None
     if with_diff:
         blame_start = time.time()
-        blames = collect_blames(files, sha1, sha2)
+        print("Blaming files...")
+        blames = collect_blames(files, sha1, sha2, generated_files)
         print(f"Blames collected in {time.time() - blame_start:.3f} seconds "
               f"({BLAME_WORKERS} workers)")
 
@@ -718,7 +979,9 @@ if __name__ == "__main__":
     css_filename = "pr_report.css"
     write_css_file(report_dir)
 
-    generate_html_report(commits, files, sha1, sha2, report_path, css_filename, blames)
+    generate_html_report(
+        commits, files, sha1, sha2, report_path, css_filename, blames, generated_files
+    )
     end_time = time.time()
     elapsed = end_time - start_time
     print("")
